@@ -14,7 +14,7 @@ import argparse
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-password_file = '/home/evan/downloads/keepass2.kdbx'
+password_file = os.path.expanduser('~/.passhole.kdbx')
 
 wordlist = 'wordlist.10000'                # taken from http://www.mit.edu/~ecprice/wordlist.10000
 # load database
