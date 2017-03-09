@@ -41,25 +41,29 @@ def word_sequence(num_words):
 
         return selected_words
 
+
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
 def dmenu(prog, tabbed=False):
-    entry_titles = '\n'.join([entry.title for entry in kp.entries])
+    entries = kp.entries
+    if not entries:
+        entries = []
+    entry_titles = '\n'.join([entry.title for entry in entries])
 
     # get the entry from dmenu
     p = Popen(prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
     grep_stdout = p.communicate(input=entry_titles)[0]
     entry_title = grep_stdout.decode().rstrip('\n')
-    print(entry_title)
-    print(type(entry_title))
-    entry = kp.find_entries_by_title(entry_title)[0]
 
-    # type out password
-    k = PyKeyboard()
-    if tabbed:
-        k.type_string(entry.username)
-        k.tap_key(k.tab_key)
-    k.type_string(entry.password)
+    if entry_title:
+        entry = kp.find_entries_by_title(entry_title)[0]
+
+        # type out password
+        k = PyKeyboard()
+        if tabbed:
+            k.type_string(entry.username)
+            k.tap_key(k.tab_key)
+        k.type_string(entry.password)
 
 
 if __name__ == '__main__':
