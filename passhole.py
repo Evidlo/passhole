@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 ## Jack Cottom, Evan Widloski - 2017-03-07
 ## Passhole - Keepass CLI + dmenu interface
 
