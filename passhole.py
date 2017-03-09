@@ -2,9 +2,11 @@
 ## Jack Cottom, Evan Widloski - 2017-03-07
 ## Passhole - Keepass CLI + dmenu interface
 
+
 from pykeepass import PyKeePass
 from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
-from pykeyboard import PyKeyboard
+from pykeyboard import PyKeyboard          # for sending password to keyboard
+import random
 import os
 import logging
 import argparse
@@ -14,11 +16,22 @@ logger = logging.getLogger(__name__)
 
 password_file = '/home/evan/downloads/keepass2.kdbx'
 
+wordlist = 'wordlist.10000'                # taken from http://www.mit.edu/~ecprice/wordlist.10000
 # load database
 if os.path.exists(password_file):
     kp = PyKeePass(password_file, password='shatpass')
 else:
     logging("No database file found at {0}".format(password_file))
+
+# generate a list of random words, `num_words` long
+def word_sequence(num_words):
+    selected_words = []
+    with open(wordlist, 'r') as f:
+        words = f.read().splitlines()
+        for _ in range(0, num_words):
+            selected_words.append(random.choice(words))
+
+        return selected_words
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
@@ -43,12 +56,18 @@ def dmenu(prog, tabbed=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--dmenu', metavar='PROG', help="select passwords using dmenu (or any program that supports dmenu style line-separated input)")
     parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
+    parser.add_argument('--generate', action='store_true', help="generate 'correct horse battery staple' style password (https://xkcd.com/936/)")
+
     args = parser.parse_args()
 
     if args.dmenu:
         dmenu(args.dmenu, args.tabbed)
+
+    if args.generate:
+        print(word_sequence(5))
 
 
 
