@@ -8,20 +8,28 @@ from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
 from pykeyboard import PyKeyboard          # for sending password to keyboard
 import random
 import os
+import shutil
 import logging
 import argparse
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 password_file = os.path.expanduser('~/.passhole.kdbx')
 
-wordlist = 'wordlist.10000'                # taken from http://www.mit.edu/~ecprice/wordlist.10000
+base_dir = os.path.dirname(os.path.realpath(__file__))
+# taken from http://www.mit.edu/~ecprice/wordlist.10000
+wordlist = os.path.join(base_dir, 'wordlist.10000')
+template_password_file = os.path.join(base_dir, '.passhole.kdbx')
+
+# create database if necessary
+if not os.path.exists(password_file):
+    log.info("No database file found at {0}".format(password_file))
+    log.info("Creating it...")
+    shutil.copy(template_password_file, password_file)
+
 # load database
-if os.path.exists(password_file):
-    kp = PyKeePass(password_file, password='shatpass')
-else:
-    logging("No database file found at {0}".format(password_file))
+kp = PyKeePass(password_file, password='shatpass')
 
 # generate a list of random words, `num_words` long
 def word_sequence(num_words):
