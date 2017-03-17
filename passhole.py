@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 ## Jack Cottom, Evan Widloski - 2017-03-07
 ## Passhole - Keepass CLI + dmenu interface
 
@@ -66,21 +67,31 @@ def dmenu(prog, tabbed=False):
         k.type_string(entry.password)
 
 
+# list entries as a tree
+def list_entries(args):
+    def list_items(group, depth):
+        print(' ' * depth + '[{}]'.format(group.name))
+        for entry in group.entries:
+            if entry == group.entries[-1]:
+                print(' ' * depth + '└── {0}'.format(entry.title))
+            else:
+                print(' ' * depth + '├── {0}'.format(entry.title))
+        for group in group.subgroups:
+            list_items(group, depth+4)
+
+    list_items(kp.root_group, 0)
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dmenu', metavar='PROG', help="select passwords using dmenu (or any program that supports dmenu style line-separated input)")
-    parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
-    parser.add_argument('--generate', action='store_true', help="generate 'correct horse battery staple' style password (https://xkcd.com/936/)")
+    # parser.add_argument('--dmenu', metavar='PROG', help="select passwords using dmenu (or any program that supports dmenu style line-separated input)")
+
+    subparsers = parser.add_subparsers()
+
+
+
+
+    list_parser = subparsers.add_parser('list', help="list entries in the database")
+    list_parser.set_defaults(func=list_entries)
 
     args = parser.parse_args()
-
-    if args.dmenu:
-        dmenu(args.dmenu, args.tabbed)
-
-    if args.generate:
-        print(word_sequence(5))
-
-
-
-
+    args.func(args)
