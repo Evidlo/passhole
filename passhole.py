@@ -47,19 +47,32 @@ def word_sequence(num_words):
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
-def dmenu(args):
-    entries = kp.entries
-    if not entries:
-        entries = []
-    entry_titles = '\n'.join([entry.title for entry in entries])
+def dmenu_entries(args):
+    def dmenu_items(group, path):
+        groups = ['[{}]'.format(group.name) for group in group.subgroups]
+        entries = [entry.title for entry in group.entries]
+        items = '\n'.join(groups + entries)
 
-    # get the entry from dmenu
-    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-    grep_stdout = p.communicate(input=entry_titles)[0]
-    entry_title = grep_stdout.decode().rstrip('\n')
+        # get the entry from dmenu
+        p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        grep_stdout = p.communicate(input=items)[0]
+        selection = grep_stdout.decode().rstrip('\n')
+        selection = selection.lstrip('[').rstrip(']')
 
-    if entry_title:
-        entry = kp.find_entries_by_title(entry_title)[0]
+        selected_item = (kp.find_entries_by_path(path + selection, first=True) or
+                         kp.find_groups_by_path(path + selection, first=True))
+
+        if isinstance(selected_item, Group):
+            return dmenu_items(selected_item, path + selected_item.name + '/')
+        elif isinstance(selected_item, Entry):
+            return path + selected_item.title
+        else:
+            return None
+
+    entry_path = dmenu_items(kp.root_group, '')
+
+    if entry_path:
+        entry = kp.find_entries_by_path(entry_path, first=True)
 
         # type out password
         k = PyKeyboard()
@@ -106,7 +119,7 @@ if __name__ == '__main__':
     dmenu_parser.add_argument('prog', nargs='?', default='dmenu', help="dmenu-like program to call")
     dmenu_parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
     dmenu_parser.add_argument('--generate', action='store_true', help="")
-    dmenu_parser.set_defaults(func=dmenu)
+    dmenu_parser.set_defaults(func=dmenu_entries)
 
 
     list_parser = subparsers.add_parser('list', help="list entries in the database")
