@@ -67,6 +67,15 @@ def dmenu(prog, tabbed=False):
         k.type_string(entry.password)
 
 
+# print out the contents of an entry
+def show(args):
+    entry = kp.find_entries_by_path(args.entry_path, first=True)
+    print('Title: ' + (entry.title or ''))
+    print('Username: ' + (entry.username or ''))
+    print('Password: ' + (entry.password or ''))
+    print('URL: ' + (entry.url or ''))
+
+
 # list entries as a tree
 def list_entries(args):
     def list_items(group, depth):
@@ -87,6 +96,9 @@ if __name__ == '__main__':
 
     subparsers = parser.add_subparsers()
 
+    show_parser = subparsers.add_parser('show', help="show the contents of an entry")
+    show_parser.add_argument('entry_path', type=str, help="Path to KeePass entry")
+    show_parser.set_defaults(func=show)
 
 
 
