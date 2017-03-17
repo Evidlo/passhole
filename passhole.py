@@ -45,14 +45,14 @@ def word_sequence(num_words):
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
-def dmenu(prog, tabbed=False):
+def dmenu(args):
     entries = kp.entries
     if not entries:
         entries = []
     entry_titles = '\n'.join([entry.title for entry in entries])
 
     # get the entry from dmenu
-    p = Popen(prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
     grep_stdout = p.communicate(input=entry_titles)[0]
     entry_title = grep_stdout.decode().rstrip('\n')
 
@@ -61,7 +61,7 @@ def dmenu(prog, tabbed=False):
 
         # type out password
         k = PyKeyboard()
-        if tabbed:
+        if args.tabbed:
             k.type_string(entry.username)
             k.tap_key(k.tab_key)
         k.type_string(entry.password)
@@ -100,6 +100,11 @@ if __name__ == '__main__':
     show_parser.add_argument('entry_path', type=str, help="Path to KeePass entry")
     show_parser.set_defaults(func=show)
 
+    dmenu_parser = subparsers.add_parser('dmenu', help="select entries using dmenu (or any program that supports dmenu style input) and type them out")
+    dmenu_parser.add_argument('prog', nargs='?', default='dmenu', help="dmenu-like program to call")
+    dmenu_parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
+    dmenu_parser.add_argument('--generate', action='store_true', help="")
+    dmenu_parser.set_defaults(func=dmenu)
 
 
     list_parser = subparsers.add_parser('list', help="list entries in the database")
