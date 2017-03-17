@@ -14,6 +14,8 @@ import logging
 import argparse
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
+# hide INFO messages from pykeepass
+logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 password_file = os.path.expanduser('~/.passhole.kdbx')
