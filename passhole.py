@@ -38,43 +38,34 @@ kp = PyKeePass(password_file, password='shatpass')
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
 def dmenu_entries(args):
-    def dmenu_items(parent_group, path):
-        groups = ['[{}]'.format(group.name) for group in parent_group.subgroups]
-        entries = [group.title for group in parent_group.entries]
-        items = '\n'.join(groups + entries)
+    entry_paths = [entry.path for entry in kp.entries]
+    items = '\n'.join(entry_paths)
 
-        # get the entry from dmenu
-        p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        stdout = p.communicate(input=items)[0].decode()
-        selection = stdout.rstrip('\n').lstrip('[').rstrip(']')
+    # get the entry from dmenu
+    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    stdout = p.communicate(input=items)[0].decode()
+    selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
 
-        # if nothing was selected, return None
-        if not selection:
-            return None
+    # if nothing was selected, return None
+    if not selection_path:
+        return None
 
-        selected_item = (kp.find_entries_by_path(path + selection, first=True) or
-                         kp.find_groups_by_path(path + selection, first=True))
+    selected_entry = kp.find_entries_by_path(selection_path, first=True)
 
-        log.debug('selected_item:{}'.format(selected_item))
+    log.debug('selected_entry:{}'.format(selected_entry))
 
-        # if a group was selected, descend into it
-        if isinstance(selected_item, Group):
-            return dmenu_items(selected_item, path + selected_item.name + '/')
-        # if an entry was selected, we're done
-        elif isinstance(selected_item, Entry):
-            return path + selected_item.title
-
-    entry_path = dmenu_items(kp.root_group, '')
-
-    if entry_path:
-        entry = kp.find_entries_by_path(entry_path, first=True)
-
-        # type out password
-        k = PyKeyboard()
-        if args.tabbed:
-            k.type_string(entry.username)
+    # type out password
+    k = PyKeyboard()
+    if args.tabbed:
+        if selected_entry.username:
+            k.type_string(selected_entry.username)
             k.tap_key(k.tab_key)
-        k.type_string(entry.password)
+        else:
+            log.warning("Selected entry does not have a username")
+    if entry.password:
+        k.type_string(selected_entry.password)
+    else:
+        log.warning("Selected entry does not have a password")
 
 
 # print out the contents of an entry
