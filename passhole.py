@@ -126,7 +126,10 @@ def add(args):
     else:
         if title:
             username = raw_input('Username: ')
-            password = raw_input('Password: ')
+            if args.words:
+                password = random_phrase(args.words)
+            else:
+                password = raw_input('Password: ')
             url = raw_input('URL: ')
             kp.add_entry(parent_group, title, username, password, url=url)
             kp.save()
@@ -134,15 +137,14 @@ def add(args):
             print('No entry title given')
 
 
-# create new entry with generated password
-def generate(args):
-    if args.words:
-        # generate a multi-word password, `words` words long
-        selected_words = []
-        with open(wordlist, 'r') as f:
-            words = f.read().splitlines()
-            for _ in range(0, num_words):
-                selected_words.append(random.choice(words))
+# generate 'correct-horse-battery-staple' style password
+def random_phrase(num_words):
+    password = ''
+    with open(wordlist, 'r') as f:
+        words = f.read().splitlines()
+        for _ in range(0, num_words):
+            password += random.choice(words)
+    return password
 
 
 if __name__ == '__main__':
@@ -165,10 +167,7 @@ if __name__ == '__main__':
     add_parser.add_argument('path', type=str, help="path to new KeePass entry/group")
     add_parser.set_defaults(func=add)
 
-    generate_parser = subparsers.add_parser('generate', help="add new entry with generated password")
-    generate_parser.add_argument('entry_path', type=str, help="path to new KeePass entry")
-    generate_parser.add_argument('--words', metavar='length', type=int, default=5, help="generate 'correct horse battery staple' style password (https://xkcd.com/936/)")
-    generate_parser.set_defaults(func=generate)
+    add_parser.add_argument('--words', metavar='length', type=int, default=5, help="automatically generate 'correct horse battery staple' style password (https://xkcd.com/936/) when creating entry ")
 
     list_parser = subparsers.add_parser('list', help="list entries in the database")
     list_parser.set_defaults(func=list_entries)
