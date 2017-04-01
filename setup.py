@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='passhole',
-    version='0.1',
+    version='0.2.post1',
     packages=['passhole'],
     author="Evan Widloski",
     author_email="evan@evanw.org",

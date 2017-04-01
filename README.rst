@@ -11,9 +11,12 @@ Passhole can also generate `correct horse battery staple`_ style passwords, whic
 
 .. _correct horse battery staple: http://xkcd.com/936
 
-## Dependencies
+Dependencies
+-----------
 
     PyUserInput
     pykeepass
     
-`pip install pykeyboard pykeepass`
+.. code:: bash
+
+   pip install pykeyboard pykeepass`
