@@ -1,0 +1,3 @@
+dist
+passhole.egg-info
+**/*.pyc
