@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='passhole',
-    version='0.2.post1',
+    version='0.2.post3',
     packages=['passhole'],
     author="Evan Widloski",
     author_email="evan@evanw.org",
@@ -11,6 +11,7 @@ setup(
     license="MIT",
     keywords="keepass dmenu password store passwords",
     url="https://github.com/purduelug/passhole",
+    scripts=['passhole/passhole'],
     install_requires=[
         "PyUserInput",
         "pykeepass",
