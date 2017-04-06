@@ -1,17 +1,22 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 ## Jack Cottom, Evan Widloski - 2017-03-07
 ## Passhole - Keepass CLI + dmenu interface
 
 
-from pykeepass import PyKeePass, Group, Entry
+from __future__ import absolute_import
+from pykeepass.pykeepass import PyKeePass
+from pykeepass.group import Group
+from pykeepass.entry import Entry
 from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
 from pykeyboard import PyKeyboard          # for sending password to keyboard
+from getpass import getpass
 import random
-import os
+import os, sys
 import shutil
 import logging
 import argparse
+
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 # hide INFO messages from pykeepass
@@ -23,7 +28,7 @@ password_file = os.path.expanduser('~/.passhole.kdbx')
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from http://www.mit.edu/~ecprice/wordlist.10000
 wordlist = os.path.join(base_dir, 'wordlist.10000')
-template_password_file = os.path.join(base_dir, '.passhole.kdbx')
+template_password_file = os.path.join(base_dir, 'blank.kdbx')
 
 # create database if necessary
 if not os.path.exists(password_file):
@@ -31,13 +36,30 @@ if not os.path.exists(password_file):
     log.info("Creating it...")
     shutil.copy(template_password_file, password_file)
 
-# load database
-kp = PyKeePass(password_file, password='shatpass')
 
+def open_database():
+    # load database
+    # check if running in interactive shell
+    if False:
+    # if os.isatty(sys.stdout.fileno()):
+        password = getpass()
+    else:
+        NULL = open(os.devnull, 'w')
+        p = Popen(["zenity", "--password"],
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=NULL,
+                  close_fds=True)
+        password = p.communicate()[0].decode().rstrip('\n')
+
+    kp = PyKeePass(password_file, password=password)
+    return kp
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
 def dmenu_entries(args):
+    kp = open_database()
+
     entry_paths = [entry.path for entry in kp.entries]
     items = '\n'.join(entry_paths)
 
@@ -70,33 +92,38 @@ def dmenu_entries(args):
 
 # print out the contents of an entry
 def show(args):
+    kp = open_database()
+
     entry = kp.find_entries_by_path(args.entry_path, first=True)
-    print('Title: ' + (entry.title or ''))
-    print('Username: ' + (entry.username or ''))
-    print('Password: ' + (entry.password or ''))
-    print('URL: ' + (entry.url or ''))
+    log.info('Title: ' + (entry.title or ''))
+    log.info('Username: ' + (entry.username or ''))
+    log.info('Password: ' + (entry.password or ''))
+    log.info('URL: ' + (entry.url or ''))
 
 
 # list entries as a tree
 def list_entries(args):
+    kp = open_database()
+
     def list_items(group, depth):
-        print(' ' * depth + '[{}]'.format(group.name))
+        log.info(' ' * depth + '[{}]'.format(group.name))
         for entry in group.entries:
             if entry == group.entries[-1]:
-                print(' ' * depth + '└── {0}'.format(entry.title))
+                log.info(' ' * depth + '└── {0}'.format(entry.title))
             else:
-                print(' ' * depth + '├── {0}'.format(entry.title))
+                log.info(' ' * depth + '├── {0}'.format(entry.title))
         for group in group.subgroups:
             list_items(group, depth+4)
 
     for entry in kp.root_group.entries:
-        print(entry.title)
+        log.info(entry.title)
     for group in kp.root_group.subgroups:
         list_items(group, 0)
 
 
 # create new entry/group
 def add(args):
+    kp = open_database()
 
     if '/' in args.path:
         [group_path, title] = args.path.rsplit('/', 1)
@@ -110,7 +137,7 @@ def add(args):
     parent_group = kp.find_groups_by_path(group_path, first=True)
 
     if parent_group is None:
-        print('No such group \'{}\''.format(group_path))
+        log.info('No such group \'{}\''.format(group_path))
         return
 
     # create a new group
@@ -120,7 +147,7 @@ def add(args):
             parent_group.append(group)
             kp.save()
         else:
-            print('No group name given')
+            log.info('No group name given')
 
     # create a new entry
     else:
@@ -129,16 +156,21 @@ def add(args):
             if args.words:
                 password = random_phrase(args.words)
             else:
-                password = raw_input('Password: ')
+                password = getpass('Password: ')
+                password_confirm = getpass('Confirm: ')
+                if not password == password_confirm:
+                    log.info("Passwords do not match")
+
             url = raw_input('URL: ')
             kp.add_entry(parent_group, title, username, password, url=url)
             kp.save()
         else:
-            print('No entry title given')
+            log.info('No entry title given')
 
 
 # generate 'correct-horse-battery-staple' style password
 def random_phrase(num_words):
+
     password = ''
     with open(wordlist, 'r') as f:
         words = f.read().splitlines()
@@ -167,7 +199,7 @@ if __name__ == '__main__':
     add_parser.add_argument('path', type=str, help="path to new KeePass entry/group")
     add_parser.set_defaults(func=add)
 
-    add_parser.add_argument('--words', metavar='length', type=int, default=5, help="automatically generate 'correct horse battery staple' style password (https://xkcd.com/936/) when creating entry ")
+    add_parser.add_argument('--words', metavar='length', type=int, nargs='?', const=5, default=None, help="automatically generate 'correct horse battery staple' style password (https://xkcd.com/936/) when creating entry ")
 
     list_parser = subparsers.add_parser('list', help="list entries in the database")
     list_parser.set_defaults(func=list_entries)
