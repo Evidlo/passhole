@@ -30,6 +30,7 @@ Example Usage
 --------------
 
 .. code:: bash
+
    # initialize the database
    >>> passhole init
    Creating database at /home/evan/.passhole.kdbx
