@@ -28,7 +28,7 @@ database_file = os.path.expanduser('~/.passhole.kdbx')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from http://www.mit.edu/~ecprice/wordlist.10000
-wordlist = os.path.join(base_dir, 'wordlist.10000')
+wordlist_file = os.path.join(base_dir, 'wordlist.10000')
 template_database_file = os.path.join(base_dir, 'blank.kdbx')
 
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
@@ -132,11 +132,11 @@ def add(args):
     kp = open_database(args)
 
     # process path into group path and entry title
-    if '/' in args.path:
-        [group_path, title] = args.path.rsplit('/', 1)
+    if '/' in args.path.rstrip('/'):
+        [group_path, title] = args.path.rstrip('/').rsplit('/', 1)
     else:
         group_path = ''
-        title = args.path
+        title = args.path.rstrip('/')
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , title:{}".format(group_path, title))
