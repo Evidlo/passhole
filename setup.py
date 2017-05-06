@@ -17,6 +17,7 @@ setup(
     install_requires=[
         "PyUserInput",
         "pykeepass",
+        "colorama"
     ],
     classifiers=[
         "Programming Language :: Python :: 2",

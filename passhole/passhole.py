@@ -36,12 +36,29 @@ alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 
+# create database
+def init_database(args):
+
+    # create database if it doesn't exist and if --database not given
+    if not os.path.exists(args.database):
+        log.info("Creating database at {}".format(args.database))
+        shutil.copy(template_database_file, args.database)
+        log.info("Enter your desired database password")
+        password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
+        password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
+        if not password == password_confirm:
+            log.info("Passwords do not match")
+            sys.exit()
+        kp = PyKeePass(args.database, password='password')
+        kp.set_password(password)
+        kp.save()
+        kp.kdb.close()
 
 # load database
 def open_database(args):
     # check if database exists
     if not os.path.exists(args.database):
-        log.error("No database found at {}".format(args.database))
+        log.error("No database found at {}. Run `passhole init`".format(args.database))
         sys.exit()
     # check if running in interactive shell
     if False:
@@ -198,25 +215,26 @@ def add(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Passhole is hardcoded to read from ~/.passhole.kdbx.  Append -h to any command to view its syntax.")
+    parser = argparse.ArgumentParser(description="Append -h to any command to view its syntax.")
+    parser._positionals.title = "commands"
 
 
     subparsers = parser.add_subparsers()
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
-    show_parser.add_argument('entry_path', type=str, help="Path to KeePass entry")
+    show_parser.add_argument('entry_path', metavar='PATH', type=str, help="Path to KeePass entry")
     show_parser.set_defaults(func=show)
 
     # process args for `dmenu` command
-    dmenu_parser = subparsers.add_parser('dmenu', help="select entries using dmenu (or any program that supports dmenu style input) and type them out")
-    dmenu_parser.add_argument('prog', nargs='?', default='dmenu', help="dmenu-like program to call")
+    dmenu_parser = subparsers.add_parser('dmenu', help="select entries using dmenu (or any program that supports dmenu style input) and send to keyboard")
+    dmenu_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
     dmenu_parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
     dmenu_parser.set_defaults(func=dmenu_entries)
 
     # process args for `add` command
     add_parser = subparsers.add_parser('add', help="add new entry (e.g. `foo`) or group (e.g. `foo/`)")
-    add_parser.add_argument('path', type=str, help="path to new KeePass entry/group")
+    add_parser.add_argument('path', metavar='PATH', type=str, help="path to new KeePass entry/group")
     add_parser.add_argument('-w', '--words', metavar='length', type=int, nargs='?', const=5, default=None, help="generate 'correct horse battery staple' style password (https://xkcd.com/936/) when creating entry ")
     add_parser.add_argument('-a', '--alphanumeric', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric password")
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
@@ -226,11 +244,15 @@ def main():
     list_parser = subparsers.add_parser('list', help="list entries in the database")
     list_parser.set_defaults(func=list_entries)
 
-    # optional argument
+    # process args for `init` command
+    list_parser = subparsers.add_parser('init', help="initialize a new database (default ~/.passhole.kdbx)")
+    list_parser.set_defaults(func=init_database)
+
+    # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
-    parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="enable debug messages")
+    parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
     version_info = str(pkg_resources.require('passhole')[0])
-    parser.add_argument('--version', action='version', version=version_info)
+    parser.add_argument('-v', '--version', action='version', version=version_info, help="show version information")
 
 
     args = parser.parse_args()
@@ -238,12 +260,6 @@ def main():
     if args.debug:
         log.info('Debugging enabled...')
         log.setLevel(logging.DEBUG)
-
-    # create database if it doesn't exist and if --database not given
-    if not os.path.exists(database_file) and args.database == database_file:
-        log.info("No database file found at {0}".format(database_file))
-        log.info("Creating it...")
-        shutil.copy(template_database_file, database_file)
 
 
     args.func(args)
