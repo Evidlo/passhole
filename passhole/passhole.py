@@ -11,6 +11,7 @@ from pykeepass.entry import Entry
 from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
 from pykeyboard import PyKeyboard          # for sending password to keyboard
 from getpass import getpass
+from colorama import Fore, Back, Style
 import random
 import os, sys
 import shutil
@@ -99,10 +100,11 @@ def show(args):
 
     entry = kp.find_entries_by_path(args.entry_path, first=True)
     if entry:
-        log.info('Title: ' + (entry.title or ''))
-        log.info('Username: ' + (entry.username or ''))
-        log.info('Password: ' + (entry.password or ''))
-        log.info('URL: ' + (entry.url or ''))
+        log.info(Fore.GREEN + 'Title: ' + Fore.RESET + (entry.title or ''))
+        log.info(Fore.GREEN + 'Username: ' + Fore.RESET + (entry.username or ''))
+        log.info(Fore.GREEN + 'Password: ' + Fore.RESET +
+                 Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
+        log.info(Fore.GREEN + 'URL: ' + Fore.RESET + (entry.url or ''))
     else:
         log.info('No entry {} found'.format(args.entry_path))
 
@@ -112,7 +114,9 @@ def list_entries(args):
     kp = open_database(args)
 
     def list_items(group, depth):
-        log.info(' ' * depth + '[{}]'.format(group.name))
+        log.info(Style.BRIGHT + Fore.BLUE +
+                ' ' * depth + '[{}]'.format(group.name) +
+                Style.RESET_ALL + Fore.RESET)
         for entry in group.entries:
             if entry == group.entries[-1]:
                 log.info(' ' * depth + '└── {0}'.format(entry.title))
@@ -159,7 +163,7 @@ def add(args):
     # create a new entry
     else:
         if title:
-            username = raw_input('Username: ')
+            username = raw_input(Fore.GREEN + 'Username: ' + Fore.RESET)
 
             # generate correct-horse-battery-staple password
             if args.words:
@@ -180,12 +184,13 @@ def add(args):
 
             # prompt for password instead of generating it
             else:
-                password = getpass('Password: ')
-                password_confirm = getpass('Confirm: ')
+                password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
+                password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
                 if not password == password_confirm:
                     log.info("Passwords do not match")
+                    sys.exit()
 
-            url = raw_input('URL: ')
+            url = raw_input(Fore.GREEN + 'URL: ' + Fore.RESET)
             kp.add_entry(parent_group, title, username, password, url=url)
             kp.save()
         else:
