@@ -134,17 +134,17 @@ def list_entries(args):
         log.info(Style.BRIGHT + Fore.BLUE +
                 ' ' * depth + '[{}]'.format(group.name) +
                 Style.RESET_ALL + Fore.RESET)
-        for entry in group.entries:
+        for entry in sorted(group.entries, key=lambda x: x.__str__()):
             if entry == group.entries[-1]:
-                log.info(' ' * depth + '└── {0}'.format(entry.title))
+                log.info(' ' * depth + "└── {0}".format(entry.title))
             else:
-                log.info(' ' * depth + '├── {0}'.format(entry.title))
-        for group in group.subgroups:
+                log.info(' ' * depth + "├── {0}".format(entry.title))
+        for group in sorted(group.subgroups, key=lambda x: x.__str__()):
             list_items(group, depth+4)
 
-    for entry in kp.root_group.entries:
+    for entry in sorted(kp.root_group.entries, key=lambda x: x.__str__()):
         log.info(entry.title)
-    for group in kp.root_group.subgroups:
+    for group in sorted(kp.root_group.subgroups, key=lambda x: x.__str__()):
         list_items(group, 0)
 
 
