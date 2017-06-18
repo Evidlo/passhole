@@ -170,48 +170,65 @@ def add(args):
 
     # create a new group
     if args.path.endswith('/'):
-        if title:
-            group = Group(title)
-            parent_group.append(group)
-            kp.save()
-        else:
-            log.info('No group name given')
+        group = Group(title)
+        parent_group.append(group)
+        kp.save()
 
     # create a new entry
     else:
-        if title:
-            username = raw_input(Fore.GREEN + 'Username: ' + Fore.RESET)
+        username = raw_input(Fore.GREEN + 'Username: ' + Fore.RESET)
 
-            # generate correct-horse-battery-staple password
-            if args.words:
-                with open(wordlist_file, 'r') as f:
-                    wordlist = f.read().splitlines()
-                    selected = random.sample(wordlist, args.words)
-                password =  '-'.join(selected)
+        # generate correct-horse-battery-staple password
+        if args.words:
+            with open(wordlist_file, 'r') as f:
+                wordlist = f.read().splitlines()
+                selected = random.sample(wordlist, args.words)
+            password =  '-'.join(selected)
 
-            # generate alphanumeric password
-            elif args.alphanumeric:
-                selected = [random.choice(alphabetic + numeric) for _ in range(0, args.alphanumeric)]
-                password = ''.join(selected)
+        # generate alphanumeric password
+        elif args.alphanumeric:
+            selected = [random.choice(alphabetic + numeric) for _ in range(0, args.alphanumeric)]
+            password = ''.join(selected)
 
-            # generate alphanumeric + symbolic password
-            elif args.symbolic:
-                selected = [random.choice(alphabetic + numeric + symbolic) for _ in range(0, args.symbolic)]
-                password = ''.join(selected)
+        # generate alphanumeric + symbolic password
+        elif args.symbolic:
+            selected = [random.choice(alphabetic + numeric + symbolic) for _ in range(0, args.symbolic)]
+            password = ''.join(selected)
 
-            # prompt for password instead of generating it
-            else:
-                password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
-                password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
-                if not password == password_confirm:
-                    log.info("Passwords do not match")
-                    sys.exit()
-
-            url = raw_input(Fore.GREEN + 'URL: ' + Fore.RESET)
-            kp.add_entry(parent_group, title, username, password, url=url)
-            kp.save()
+        # prompt for password instead of generating it
         else:
-            log.info('No entry title given')
+            password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
+            password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
+            if not password == password_confirm:
+                log.info("Passwords do not match")
+                sys.exit()
+
+        url = raw_input(Fore.GREEN + 'URL: ' + Fore.RESET)
+        kp.add_entry(parent_group, title, username, password, url=url)
+        kp.save()
+
+
+# remove an entry/group
+def remove(args):
+    kp = open_database(args)
+
+    # remove a group
+    if args.path.endswith('/'):
+        group = kp.find_groups_by_path(args.path, first=True)
+        if group:
+            group.delete()
+        else:
+            log.info("No such group {}".format(args.path))
+
+    # remove an entry
+    else:
+        entry = kp.find_entries_by_path(args.path, first=True)
+        if entry:
+            entry.delete()
+        else:
+            log.info("No such entry {}".format(args.path))
+
+    kp.save()
 
 
 def main():
@@ -239,6 +256,11 @@ def main():
     add_parser.add_argument('-a', '--alphanumeric', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric password")
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
     add_parser.set_defaults(func=add)
+
+    # process args for `remove` command
+    remove_parser = subparsers.add_parser('remove', help="remove an entry (e.g. `foo`) or group (e.g. `foo/`)")
+    remove_parser.add_argument('path', metavar='PATH', type=str, help="path to KeePass entry/group to delete")
+    remove_parser.set_defaults(func=remove)
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', help="list entries in the database")
