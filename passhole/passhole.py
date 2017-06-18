@@ -95,7 +95,7 @@ def dmenu_entries(args):
 
     selected_entry = kp.find_entries_by_path(selection_path, first=True)
 
-    log.debug('selected_entry:{}'.format(selected_entry))
+    log.debug("selected_entry:{}".format(selected_entry))
 
     # type out password
     k = PyKeyboard()
@@ -117,13 +117,13 @@ def show(args):
 
     entry = kp.find_entries_by_path(args.entry_path, first=True)
     if entry:
-        log.info(Fore.GREEN + 'Title: ' + Fore.RESET + (entry.title or ''))
-        log.info(Fore.GREEN + 'Username: ' + Fore.RESET + (entry.username or ''))
-        log.info(Fore.GREEN + 'Password: ' + Fore.RESET +
+        log.info(Fore.GREEN + "Title: " + Fore.RESET + (entry.title or ''))
+        log.info(Fore.GREEN + "Username: " + Fore.RESET + (entry.username or ''))
+        log.info(Fore.GREEN + "Password: " + Fore.RESET +
                  Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
-        log.info(Fore.GREEN + 'URL: ' + Fore.RESET + (entry.url or ''))
+        log.info(Fore.GREEN + "URL: " + Fore.RESET + (entry.url or ''))
     else:
-        log.info('No entry {} found'.format(args.entry_path))
+        log.info("No entry {} found".format(args.entry_path))
 
 
 # list entries as a tree
@@ -165,7 +165,7 @@ def add(args):
     parent_group = kp.find_groups_by_path(group_path, first=True)
 
     if parent_group is None:
-        log.info('No such group \'{}\''.format(group_path))
+        log.info("No such group '{}'".format(group_path))
         return
 
     # create a new group
