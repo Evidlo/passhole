@@ -153,11 +153,13 @@ def add(args):
     kp = open_database(args)
 
     # process path into group path and entry title
-    if '/' in args.path.rstrip('/'):
-        [group_path, title] = args.path.rstrip('/').rsplit('/', 1)
+    if '/' in args.path.strip('/'):
+        [group_path, title] = args.path.strip('/').rsplit('/', 1)
     else:
         group_path = ''
-        title = args.path.rstrip('/')
+        title = args.path.strip('/')
+        if not title:
+            log.info("No group name given")
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , title:{}".format(group_path, title))
