@@ -5,6 +5,7 @@
 
 
 from __future__ import absolute_import
+from builtins import input
 from pykeepass.pykeepass import PyKeePass
 from pykeepass.group import Group
 from pykeepass.entry import Entry
@@ -178,7 +179,7 @@ def add(args):
 
     # create a new entry
     else:
-        username = raw_input(Fore.GREEN + 'Username: ' + Fore.RESET)
+        username = input(Fore.GREEN + 'Username: ' + Fore.RESET)
 
         # generate correct-horse-battery-staple password
         if args.words:
@@ -205,7 +206,7 @@ def add(args):
                 log.info("Passwords do not match")
                 sys.exit()
 
-        url = raw_input(Fore.GREEN + 'URL: ' + Fore.RESET)
+        url = input(Fore.GREEN + 'URL: ' + Fore.RESET)
         kp.add_entry(parent_group, title, username, password, url=url)
         kp.save()
 
