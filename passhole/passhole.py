@@ -186,7 +186,7 @@ def add(args):
             with open(wordlist_file, 'r') as f:
                 wordlist = f.read().splitlines()
                 selected = random.sample(wordlist, args.words)
-            password =  '-'.join(selected)
+            password =  '.'.join(selected)
 
         # generate alphanumeric password
         elif args.alphanumeric:

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='passhole',
-    version='1.2',
+    version='1.2.1',
     packages=['passhole'],
     package_data={'passhole':['blank.kdbx', 'wordlist.10000']},
     author="Evan Widloski",
