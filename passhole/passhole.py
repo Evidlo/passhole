@@ -72,7 +72,7 @@ def open_database(args):
                   stdout=PIPE,
                   stderr=NULL,
                   close_fds=True)
-        password = p.communicate()[0].decode().rstrip('\n')
+        password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
     kp = PyKeePass(args.database, password=password)
     return kp
@@ -87,7 +87,7 @@ def dmenu_entries(args):
 
     # get the entry from dmenu
     p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-    stdout = p.communicate(input=items)[0].decode()
+    stdout = p.communicate(input=items.encode('utf-8'))[0].decode('utf-8')
     selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
 
     # if nothing was selected, return None
