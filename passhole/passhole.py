@@ -13,6 +13,7 @@ from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
 from pykeyboard import PyKeyboard          # for sending password to keyboard
 from getpass import getpass
 from colorama import Fore, Back, Style
+from base64 import b64encode
 import random
 import os, sys
 import shutil
@@ -27,6 +28,7 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 database_file = os.path.expanduser('~/.passhole.kdbx')
+keyfile_path = os.path.expanduser('~/.passhole.key')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from http://www.mit.edu/~ecprice/wordlist.10000
@@ -40,7 +42,7 @@ symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 # create database
 def init_database(args):
 
-    # create database if it doesn't exist and if --database not given
+    # create database if it doesn't exist
     if not os.path.exists(args.database):
         log.info("Creating database at {}".format(args.database))
         shutil.copy(template_database_file, args.database)
@@ -50,10 +52,31 @@ def init_database(args):
         if not password == password_confirm:
             log.info("Passwords do not match")
             sys.exit()
+        use_keyfile = input("Would you like to generate a keyfile? (G/n): ")
+        # user defined keyfile
+        # if use_keyfile == 'u':
+        #     keyfile= input("Enter a path to a file to use as a keyfile: ")
+        #     if not os.exists(keyfile):
+        #         log.info("No such file {}".format(keyfile))
+        #         sys.exit()
+        # dont use a keyfile
+        if use_keyfile == 'n':
+            keyfile= None
+        # generate a random AES256 keyfile
+        else:
+            keyfile = keyfile_path
+            if os.path.exists(keyfile_path):
+                log.info("Found existing keyfile at " + Style.BRIGHT + keyfile_path + Style.RESET_ALL + ". Exiting")
+            with open(keyfile_path, 'w') as f:
+                contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
+                f.write(contents.format(b64encode(os.urandom(32))))
+
         kp = PyKeePass(args.database, password='password')
-        kp.set_password(password)
+        kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
-        kp.kdb.close()
+    # quit if database already exists
+    else:
+        log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
 
 # load database
 def open_database(args):
@@ -61,6 +84,10 @@ def open_database(args):
     if not os.path.exists(args.database):
         log.error("No database found at {}. Run `passhole init`".format(args.database))
         sys.exit()
+    if os.path.exists(keyfile_path):
+        keyfile = keyfile_path
+    else:
+        keyfile = None
     # check if running in interactive shell
     if False:
     # if os.isatty(sys.stdout.fileno()):
@@ -74,7 +101,7 @@ def open_database(args):
                   close_fds=True)
         password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-    kp = PyKeePass(args.database, password=password)
+    kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     return kp
 
 # select an entry using `prog`, then type the password
@@ -106,7 +133,7 @@ def dmenu_entries(args):
             k.tap_key(k.tab_key)
         else:
             log.warning("Selected entry does not have a username")
-    if entry.password:
+    if selected_entry.password:
         k.type_string(selected_entry.password)
     else:
         log.warning("Selected entry does not have a password")
@@ -181,21 +208,23 @@ def add(args):
     else:
         username = input(Fore.GREEN + 'Username: ' + Fore.RESET)
 
+        # use urandom for number generation
+        rng = random.SystemRandom()
         # generate correct-horse-battery-staple password
         if args.words:
             with open(wordlist_file, 'r') as f:
                 wordlist = f.read().splitlines()
-                selected = random.sample(wordlist, args.words)
+                selected = rng.sample(wordlist, args.words)
             password =  '.'.join(selected)
 
         # generate alphanumeric password
         elif args.alphanumeric:
-            selected = [random.choice(alphabetic + numeric) for _ in range(0, args.alphanumeric)]
+            selected = [rng.choice(alphabetic + numeric) for _ in range(0, args.alphanumeric)]
             password = ''.join(selected)
 
         # generate alphanumeric + symbolic password
         elif args.symbolic:
-            selected = [random.choice(alphabetic + numeric + symbolic) for _ in range(0, args.symbolic)]
+            selected = [rng.choice(alphabetic + numeric + symbolic) for _ in range(0, args.symbolic)]
             password = ''.join(selected)
 
         # prompt for password instead of generating it
