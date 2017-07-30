@@ -14,6 +14,8 @@ from pykeyboard import PyKeyboard          # for sending password to keyboard
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
+from io import BytesIO
+import gpgme
 import random
 import os, sys
 import shutil
@@ -29,6 +31,7 @@ log = logging.getLogger(__name__)
 
 database_file = os.path.expanduser('~/.passhole.kdbx')
 keyfile_path = os.path.expanduser('~/.passhole.key')
+passhole_cache = os.path.expanduser('~/.cache/passhole_cache')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from http://www.mit.edu/~ecprice/wordlist.10000
@@ -38,6 +41,9 @@ template_database_file = os.path.join(base_dir, 'blank.kdbx')
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
+
+c = gpgme.Context()
+default_key = c.keylist().next()
 
 # create database
 def init_database(args):
@@ -49,16 +55,12 @@ def init_database(args):
         log.info("Enter your desired database password")
         password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
         password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
+
         if not password == password_confirm:
             log.info("Passwords do not match")
             sys.exit()
+
         use_keyfile = input("Would you like to generate a keyfile? (G/n): ")
-        # user defined keyfile
-        # if use_keyfile == 'u':
-        #     keyfile= input("Enter a path to a file to use as a keyfile: ")
-        #     if not os.exists(keyfile):
-        #         log.info("No such file {}".format(keyfile))
-        #         sys.exit()
         # dont use a keyfile
         if use_keyfile == 'n':
             keyfile= None
@@ -74,9 +76,18 @@ def init_database(args):
         kp = PyKeePass(args.database, password='password')
         kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
+        create_password_cache(password)
+
     # quit if database already exists
     else:
         log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
+
+# cache database password to a gpg encrypted file
+def create_password_cache(password):
+    infile = BytesIO(password.encode('utf8'))
+    with open(passhole_cache, 'wb') as outfile:
+        c.encrypt([default_key], 0, infile, outfile)
+    infile.close()
 
 # load database
 def open_database(args):
@@ -84,22 +95,36 @@ def open_database(args):
     if not os.path.exists(args.database):
         log.error("No database found at {}. Run `passhole init`".format(args.database))
         sys.exit()
+    # retrieve keyfile
     if os.path.exists(keyfile_path):
         keyfile = keyfile_path
     else:
         keyfile = None
-    # check if running in interactive shell
-    if False:
-    # if os.isatty(sys.stdout.fileno()):
-        password = getpass()
+
+    # retrieve password from cache
+    if os.path.exists(os.path.expanduser(passhole_cache)):
+        outfile = BytesIO()
+        with open(passhole_cache, 'rb') as infile:
+            c.decrypt(infile, outfile)
+        password = outfile.getvalue().decode('utf8')
+        outfile.close()
+    # if no cache, prompt for password and save it to cache
     else:
-        NULL = open(os.devnull, 'w')
-        p = Popen(["zenity", "--password"],
-                  stdin=PIPE,
-                  stdout=PIPE,
-                  stderr=NULL,
-                  close_fds=True)
-        password = p.communicate()[0].decode('utf-8').rstrip('\n')
+        # check if running in interactive shell
+        if False:
+        # if os.isatty(sys.stdout.fileno()):
+            password = getpass('Enter password to cache')
+        # otherwise use zenity
+        else:
+            NULL = open(os.devnull, 'w')
+            p = Popen(["zenity", "--password"],
+                    stdin=PIPE,
+                    stdout=PIPE,
+                    stderr=NULL,
+                    close_fds=True)
+            password = p.communicate()[0].decode('utf-8').rstrip('\n')
+
+        create_password_cache(password)
 
     kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     return kp
@@ -314,7 +339,6 @@ def main():
     if args.debug:
         log.info('Debugging enabled...')
         log.setLevel(logging.DEBUG)
-
 
     args.func(args)
 
