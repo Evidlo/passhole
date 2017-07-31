@@ -59,7 +59,7 @@ def init_database(args):
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
-        log.info("Creating database at {}".format(args.database))
+        log.info("Creating database at {}".format(bold(args.database)))
         shutil.copy(template_database_file, args.database)
         log.info("Enter your desired database password")
         password = getpass(green('Password: '))
@@ -69,32 +69,34 @@ def init_database(args):
             log.info("Passwords do not match")
             sys.exit()
 
-        use_keyfile = input("Would you like to generate a keyfile? (G/n): ")
+        use_keyfile = input("Would you like to generate a keyfile? (Y/n): ")
         # dont use a keyfile
         if use_keyfile == 'n':
-            keyfile= None
+            keyfile = None
         # generate a random AES256 keyfile
         else:
-            keyfile = keyfile_path
-            if os.path.exists(keyfile_path):
-            with open(keyfile_path, 'w') as f:
+            keyfile = args.keyfile
+            if os.path.exists(args.keyfile):
                 log.info("Found existing keyfile at {}. Exiting".format(bold(args.keyfile)))
+            with open(args.keyfile, 'w') as f:
                 contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
+                log.debug("keyfile contents {}".format(contents))
                 f.write(contents.format(b64encode(os.urandom(32))))
 
         kp = PyKeePass(args.database, password='password')
         kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
-        create_password_cache(password)
+        if password and not args.nocache:
+            create_password_cache(args.cache, password)
 
     # quit if database already exists
     else:
         log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
 
 # cache database password to a gpg encrypted file
-def create_password_cache(password):
+def create_password_cache(cache, password):
     infile = BytesIO(password.encode('utf8'))
-    with open(passhole_cache, 'wb') as outfile:
+    with open(cache, 'wb') as outfile:
         c.encrypt([default_key], 0, infile, outfile)
     infile.close()
 
@@ -104,16 +106,27 @@ def open_database(args):
     if not os.path.exists(args.database):
         log.error("No database found at {}. Run `passhole init`".format(args.database))
         sys.exit()
-    # retrieve keyfile
-    if os.path.exists(keyfile_path):
-        keyfile = keyfile_path
-    else:
+    # check if keyfile exists, try to use default keyfile
+    if args.nokeyfile:
         keyfile = None
+    else:
+        if not args.keyfile:
+            if os.path.exists(keyfile_path):
+                keyfile = keyfile_path
+            else:
+                keyfile = None
+        else:
+            if os.path.exists(args.keyfile):
+                keyfile = args.keyfile
+            else:
+                log.error("No keyfile found at {}".format(bold(args.keyfile)))
+                sys.exit()
 
     # retrieve password from cache
-    if os.path.exists(os.path.expanduser(passhole_cache)):
+    if os.path.exists(os.path.expanduser(args.cache)) and not args.nocache:
+        log.debug("Retrieving password from {}".format(args.cache))
         outfile = BytesIO()
-        with open(passhole_cache, 'rb') as infile:
+        with open(args.cache, 'rb') as infile:
             c.decrypt(infile, outfile)
         password = outfile.getvalue().decode('utf8')
         outfile.close()
@@ -133,9 +146,19 @@ def open_database(args):
                     close_fds=True)
             password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-        create_password_cache(password)
+        if password:
+            if not args.nocache:
+                create_password_cache(args.cache, password)
+        else:
+            log.error("No password given")
+            sys.exit()
 
-    kp = PyKeePass(args.database, password=password, keyfile=keyfile)
+    log.debug("opening {} with password:{} and keyfile:{}".format(args.database, password, keyfile))
+    try:
+        kp = PyKeePass(args.database, password=password, keyfile=args.keyfile)
+    except IOError:
+        log.info("Password or keyfile incorrect")
+        sys.exit()
     return kp
 
 # select an entry using `prog`, then type the password
@@ -336,6 +359,10 @@ def main():
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
+    parser.add_argument('--cache', metavar='PATH', type=str, default=passhole_cache, help="specify password cache")
+    parser.add_argument('--nocache', action='store_true', default=False, help="don't cache database password")
+    parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
+    parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look in default keyfile path")
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
     version_info = str(pkg_resources.require('passhole')[0])
     parser.add_argument('-v', '--version', action='version', version=version_info, help="show version information")
