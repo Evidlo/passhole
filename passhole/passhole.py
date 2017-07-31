@@ -140,7 +140,7 @@ def open_database(args):
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
-def dmenu_entries(args):
+def type_entries(args):
     kp = open_database(args)
 
     entry_paths = [entry.path for entry in kp.entries]
@@ -307,11 +307,11 @@ def main():
     show_parser.add_argument('entry_path', metavar='PATH', type=str, help="Path to KeePass entry")
     show_parser.set_defaults(func=show)
 
-    # process args for `dmenu` command
-    dmenu_parser = subparsers.add_parser('dmenu', help="select entries using dmenu (or any program that supports dmenu style input) and send to keyboard")
-    dmenu_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
-    dmenu_parser.add_argument('--tabbed', action='store_true', default=False, help="type out username and password (tab separated) when using --dmenu")
-    dmenu_parser.set_defaults(func=dmenu_entries)
+    # process args for `type` command
+    type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
+    type_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
+    type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
+    type_parser.set_defaults(func=type_entries)
 
     # process args for `add` command
     add_parser = subparsers.add_parser('add', help="add new entry (e.g. `foo`) or group (e.g. `foo/`)")
