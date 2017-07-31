@@ -45,6 +45,15 @@ symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 c = gpgme.Context()
 default_key = c.keylist().next()
 
+def red(text):
+    return Fore.RED + text + Fore.RESET
+def green(text):
+    return Fore.GREEN + text + Fore.RESET
+def blue(text):
+    return Fore.BLUE + text + Fore.RESET
+def bold(text):
+    return Style.BRIGHT + text + Style.RESET_ALL
+
 # create database
 def init_database(args):
 
@@ -53,8 +62,8 @@ def init_database(args):
         log.info("Creating database at {}".format(args.database))
         shutil.copy(template_database_file, args.database)
         log.info("Enter your desired database password")
-        password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
-        password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
+        password = getpass(green('Password: '))
+        password_confirm = getpass(green('Confirm: '))
 
         if not password == password_confirm:
             log.info("Passwords do not match")
@@ -68,8 +77,8 @@ def init_database(args):
         else:
             keyfile = keyfile_path
             if os.path.exists(keyfile_path):
-                log.info("Found existing keyfile at " + Style.BRIGHT + keyfile_path + Style.RESET_ALL + ". Exiting")
             with open(keyfile_path, 'w') as f:
+                log.info("Found existing keyfile at {}. Exiting".format(bold(args.keyfile)))
                 contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
                 f.write(contents.format(b64encode(os.urandom(32))))
 
@@ -170,13 +179,13 @@ def show(args):
 
     entry = kp.find_entries_by_path(args.entry_path, first=True)
     if entry:
-        log.info(Fore.GREEN + "Title: " + Fore.RESET + (entry.title or ''))
-        log.info(Fore.GREEN + "Username: " + Fore.RESET + (entry.username or ''))
-        log.info(Fore.GREEN + "Password: " + Fore.RESET +
+        log.info(green("Title: ") + (entry.title or ''))
+        log.info(green("Username: ") + (entry.username or ''))
+        log.info(green("Password: ") +
                  Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
-        log.info(Fore.GREEN + "URL: " + Fore.RESET + (entry.url or ''))
+        log.info(green("URL: ") + (entry.url or ''))
     else:
-        log.info("No entry {} found".format(args.entry_path))
+        log.info("No entry {} found".format(bold(args.entry_path)))
 
 
 # list entries as a tree
@@ -184,9 +193,7 @@ def list_entries(args):
     kp = open_database(args)
 
     def list_items(group, depth):
-        log.info(Style.BRIGHT + Fore.BLUE +
-                ' ' * depth + '[{}]'.format(group.name) +
-                Style.RESET_ALL + Fore.RESET)
+        log.info(bold(blue(' ' * depth + '[{}]'.format(group.name))))
         for entry in sorted(group.entries, key=lambda x: x.__str__()):
             if entry == group.entries[-1]:
                 log.info(' ' * depth + "└── {0}".format(entry.title))
@@ -220,7 +227,7 @@ def add(args):
     parent_group = kp.find_groups_by_path(group_path, first=True)
 
     if parent_group is None:
-        log.info("No such group '{}'".format(group_path))
+        log.info("No such group '{}'".format(bold(group_path)))
         return
 
     # create a new group
@@ -231,7 +238,7 @@ def add(args):
 
     # create a new entry
     else:
-        username = input(Fore.GREEN + 'Username: ' + Fore.RESET)
+        username = input(green('Username: '))
 
         # use urandom for number generation
         rng = random.SystemRandom()
@@ -254,13 +261,13 @@ def add(args):
 
         # prompt for password instead of generating it
         else:
-            password = getpass(Fore.GREEN + 'Password: ' + Fore.RESET)
-            password_confirm = getpass(Fore.GREEN + 'Confirm: ' + Fore.RESET)
+            password = getpass(green('Password: '))
+            password_confirm = getpass(green('Confirm: '))
             if not password == password_confirm:
                 log.info("Passwords do not match")
                 sys.exit()
 
-        url = input(Fore.GREEN + 'URL: ' + Fore.RESET)
+        url = input(green('URL: '))
         kp.add_entry(parent_group, title, username, password, url=url)
         kp.save()
 
@@ -275,7 +282,7 @@ def remove(args):
         if group:
             group.delete()
         else:
-            log.info("No such group {}".format(args.path))
+            log.info("No such group {}".format(bold(args.path)))
 
     # remove an entry
     else:
@@ -283,7 +290,7 @@ def remove(args):
         if entry:
             entry.delete()
         else:
-            log.info("No such entry {}".format(args.path))
+            log.info("No such entry {}".format(bold(args.path)))
 
     kp.save()
 
