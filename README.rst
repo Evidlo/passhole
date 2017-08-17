@@ -1,7 +1,7 @@
 Passhole
 ========
 
-Passhole is a simple CLI and dmenu interface for KeePass 1.x (v3) and 2.x (v4) files.
+Passhole is a CLI interface for KeePass 1.x (v3) and 2.x (v4) databases with support for dmenu.
 
 Passhole allows you to edit and generate passwords much in the same way as the popular `pass`_ utility.
 
@@ -38,7 +38,7 @@ Example Usage
    Password: 
    Confirm:
 
-   # add a new entry with manual created password
+   # add a new entry with manually created password
    >>> passhole add github
    Username: Evidlo
    Password: 
