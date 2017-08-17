@@ -3,8 +3,8 @@
 ## Evan Widloski - 2017-03-07
 ## Passhole - Keepass CLI + dmenu interface
 
-
 from __future__ import absolute_import
+__version__ = '1.3.1'
 from builtins import input
 from pykeepass.pykeepass import PyKeePass
 from pykeepass.group import Group
@@ -43,7 +43,7 @@ numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 
 c = gpgme.Context()
-default_key = c.keylist().next()
+default_key = next(c.keylist())
 
 def red(text):
     return Fore.RED + text + Fore.RESET
@@ -322,8 +322,9 @@ def main():
     parser = argparse.ArgumentParser(description="Append -h to any command to view its syntax.")
     parser._positionals.title = "commands"
 
-
     subparsers = parser.add_subparsers()
+    subparsers.dest = 'command'
+    subparsers.required = True
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
@@ -364,8 +365,7 @@ def main():
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look in default keyfile path")
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
-    version_info = str(pkg_resources.require('passhole')[0])
-    parser.add_argument('-v', '--version', action='version', version=version_info, help="show version information")
+    parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
 
     args = parser.parse_args()
