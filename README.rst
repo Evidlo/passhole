@@ -75,11 +75,11 @@ Example Usage
    URL: twitter.com
 
    # select entry using dmenu, then send password to keyboard
-   >>> passhole dmenu dmenu
+   >>> passhole type dmenu
    inns-ambien-travelling-throw-force
 
    # select entry using dmenu, then send username and password to keyboard, separated by a tab
-   >>> passhole dmenu dmenu --tabbed
+   >>> passhole type dmenu --tabbed
    Evidlo	inns-ambien-travelling-throw-force
 
 

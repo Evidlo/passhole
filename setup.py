@@ -1,9 +1,9 @@
 from setuptools import setup
-from passhole.passhole import __version__
+from passhole import version
 
 setup(
     name='passhole',
-    version=__version__,
+    version=version.__version__,
     packages=['passhole'],
     package_data={'passhole':['blank.kdbx', 'wordlist.10000']},
     author="Evan Widloski",

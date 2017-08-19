@@ -4,8 +4,8 @@
 ## Passhole - Keepass CLI + dmenu interface
 
 from __future__ import absolute_import
-__version__ = '1.3.1'
 from builtins import input
+from .version import __version__
 from pykeepass.pykeepass import PyKeePass
 from pykeepass.group import Group
 from pykeepass.entry import Entry
@@ -59,8 +59,6 @@ def init_database(args):
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
-        log.info("Creating database at {}".format(bold(args.database)))
-        shutil.copy(template_database_file, args.database)
         log.info("Enter your desired database password")
         password = getpass(green('Password: '))
         password_confirm = getpass(green('Confirm: '))
@@ -69,16 +67,23 @@ def init_database(args):
             log.info("Passwords do not match")
             sys.exit()
 
+        log.info("Creating database at {}".format(bold(args.database)))
+        shutil.copy(template_database_file, args.database)
+
         use_keyfile = input("Would you like to generate a keyfile? (Y/n): ")
         # dont use a keyfile
         if use_keyfile == 'n':
             keyfile = None
         # generate a random AES256 keyfile
         else:
-            keyfile = args.keyfile
-            if os.path.exists(args.keyfile):
-                log.info("Found existing keyfile at {}. Exiting".format(bold(args.keyfile)))
-            with open(args.keyfile, 'w') as f:
+            keyfile = keyfile_path if not args.keyfile else args.keyfile
+
+            log.debug("Looking for keyfile at {}".format(keyfile))
+            if os.path.exists(keyfile):
+                log.info("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
+                sys.exit()
+
+            with open(keyfile, 'w') as f:
                 contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
                 log.debug("keyfile contents {}".format(contents))
                 f.write(contents.format(b64encode(os.urandom(32)).decode()))
@@ -92,6 +97,7 @@ def init_database(args):
     # quit if database already exists
     else:
         log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
+        sys.exit()
 
 # cache database password to a gpg encrypted file
 def create_password_cache(cache, password):
@@ -155,7 +161,7 @@ def open_database(args):
 
     log.debug("opening {} with password:{} and keyfile:{}".format(args.database, password, keyfile))
     try:
-        kp = PyKeePass(args.database, password=password, keyfile=args.keyfile)
+        kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
         log.info("Password or keyfile incorrect")
         sys.exit()
