@@ -81,7 +81,7 @@ def init_database(args):
             with open(args.keyfile, 'w') as f:
                 contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
                 log.debug("keyfile contents {}".format(contents))
-                f.write(contents.format(b64encode(os.urandom(32))))
+                f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
         kp = PyKeePass(args.database, password='password')
         kp.set_credentials(password=password, keyfile=keyfile)
