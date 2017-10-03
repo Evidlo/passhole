@@ -14,7 +14,7 @@ setup(
     keywords="keepass cli dmenu password store passwords manager rofi pykeepass libkeepass",
     url="https://github.com/purduelug/passhole",
     entry_points={
-        'console_scripts': ['passhole = passhole.passhole:main']
+        'console_scripts': ['passhole = passhole.passhole:main', 'ph = passhole.passhole:main']
     },
     install_requires=[
         "PyUserInput",

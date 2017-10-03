@@ -42,8 +42,7 @@ alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 
-c = gpgme.Context()
-default_key = next(c.keylist())
+gpg = gpgme.Context()
 
 def red(text):
     return Fore.RED + text + Fore.RESET
@@ -53,6 +52,7 @@ def blue(text):
     return Fore.BLUE + text + Fore.RESET
 def bold(text):
     return Style.BRIGHT + text + Style.RESET_ALL
+
 
 # create database
 def init_database(args):
@@ -92,19 +92,38 @@ def init_database(args):
         kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
         if password and not args.nocache:
-            create_password_cache(args.cache, password)
+            create_password_cache(args.cache, password, args.gpgkey)
 
     # quit if database already exists
     else:
         log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
         sys.exit()
 
+
 # cache database password to a gpg encrypted file
-def create_password_cache(cache, password):
+def create_password_cache(cache, password, fingerprint):
+    # get GPG key for creating cache
+    keys = list(gpg.keylist())
+    if keys:
+        # get the gpg key specified
+        if fingerprint:
+            log.debug("Selected fingerprint: {}".format(fingerprint))
+            try:
+                selected_key = gpg.getkey(fingerprint.replace(' ', ''))
+            except gpgme.GpgmeError:
+                log.error("Specified GPG key not found")
+        # otherwise get the first key
+        else:
+            selected_key = keys[0]
+    else:
+        log.error("No GPG keys found.  Try `gpg --gen-key`")
+
+
     infile = BytesIO(password.encode('utf8'))
     with open(cache, 'wb') as outfile:
-        c.encrypt([default_key], 0, infile, outfile)
+        gpg.encrypt([default_key], 0, infile, outfile)
     infile.close()
+
 
 # load database
 def open_database(args):
@@ -133,7 +152,7 @@ def open_database(args):
         log.debug("Retrieving password from {}".format(args.cache))
         outfile = BytesIO()
         with open(args.cache, 'rb') as infile:
-            c.decrypt(infile, outfile)
+            gpg.decrypt(infile, outfile)
         password = outfile.getvalue().decode('utf8')
         outfile.close()
     # if no cache, prompt for password and save it to cache
@@ -153,7 +172,7 @@ def open_database(args):
 
         if password:
             if not args.nocache:
-                create_password_cache(args.cache, password)
+                create_password_cache(args.cache, password, args.gpgkey)
         else:
             log.error("No password given")
             sys.exit()
@@ -165,6 +184,7 @@ def open_database(args):
         log.info("Password or keyfile incorrect")
         sys.exit()
     return kp
+
 
 # select an entry using `prog`, then type the password
 # if `tabbed` is True, type out username, TAB, password
@@ -367,6 +387,7 @@ def main():
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--cache', metavar='PATH', type=str, default=passhole_cache, help="specify password cache")
     parser.add_argument('--nocache', action='store_true', default=False, help="don't cache database password")
+    parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look in default keyfile path")
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
