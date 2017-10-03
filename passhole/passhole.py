@@ -9,8 +9,8 @@ from .version import __version__
 from pykeepass.pykeepass import PyKeePass
 from pykeepass.group import Group
 from pykeepass.entry import Entry
-from subprocess import Popen, PIPE, STDOUT # for talking to dmenu programs
-from pykeyboard import PyKeyboard          # for sending password to keyboard
+from subprocess import Popen, PIPE, STDOUT
+from pykeyboard import PyKeyboard
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
@@ -139,13 +139,12 @@ def open_database(args):
     # if no cache, prompt for password and save it to cache
     else:
         # check if running in interactive shell
-        if False:
-        # if os.isatty(sys.stdout.fileno()):
-            password = getpass('Enter password to cache')
+        if os.isatty(sys.stdout.fileno()):
+            password = getpass('Enter password: ')
         # otherwise use zenity
         else:
             NULL = open(os.devnull, 'w')
-            p = Popen(["zenity", "--password"],
+            p = Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
                     stdin=PIPE,
                     stdout=PIPE,
                     stderr=NULL,
@@ -383,4 +382,7 @@ def main():
     args.func(args)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
