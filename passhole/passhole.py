@@ -117,6 +117,7 @@ def create_password_cache(cache, password, fingerprint):
             selected_key = keys[0]
     else:
         log.error("No GPG keys found.  Try `gpg --gen-key` or use the `--nocache` option")
+        sys.exit()
 
 
     infile = BytesIO(password.encode('utf8'))
