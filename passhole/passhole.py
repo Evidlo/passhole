@@ -64,7 +64,7 @@ def init_database(args):
         password_confirm = getpass(green('Confirm: '))
 
         if not password == password_confirm:
-            log.info("Passwords do not match")
+            log.info(red("Passwords do not match"))
             sys.exit()
 
         log.info("Creating database at {}".format(bold(args.database)))
@@ -96,7 +96,7 @@ def init_database(args):
 
     # quit if database already exists
     else:
-        log.info("Found existing database at " + Style.BRIGHT + args.database + Style.RESET_ALL + ". Exiting")
+        log.info(red("Found existing database at ") + bold(args.database))
         sys.exit()
 
 
@@ -153,7 +153,10 @@ def open_database(args):
         log.debug("Retrieving password from {}".format(args.cache))
         outfile = BytesIO()
         with open(args.cache, 'rb') as infile:
-            gpg.decrypt(infile, outfile)
+            try:
+                gpg.decrypt(infile, outfile)
+            except:
+                log.info(red("Could not decrypt cache"))
         password = outfile.getvalue().decode('utf8')
         outfile.close()
     # if no cache, prompt for password and save it to cache
@@ -182,7 +185,7 @@ def open_database(args):
     try:
         kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
-        log.info("Password or keyfile incorrect")
+        log.info(red("Password or keyfile incorrect"))
         sys.exit()
     return kp
 
@@ -234,7 +237,7 @@ def show(args):
                  Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
         log.info(green("URL: ") + (entry.url or ''))
     else:
-        log.info("No entry {} found".format(bold(args.entry_path)))
+        log.info(red("No such entry ") + bold(args.entry_path))
 
 
 # list entries as a tree
@@ -268,7 +271,7 @@ def add(args):
         group_path = ''
         title = args.path.strip('/')
         if not title:
-            log.info("No group name given")
+            log.info(red("No group name given"))
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , title:{}".format(group_path, title))
@@ -276,7 +279,7 @@ def add(args):
     parent_group = kp.find_groups_by_path(group_path, first=True)
 
     if parent_group is None:
-        log.info("No such group '{}'".format(bold(group_path)))
+        log.info(red("No such group ") + bold(group_path))
         return
 
     # create a new group
@@ -313,7 +316,7 @@ def add(args):
             password = getpass(green('Password: '))
             password_confirm = getpass(green('Confirm: '))
             if not password == password_confirm:
-                log.info("Passwords do not match")
+                log.info(red("Passwords do not match"))
                 sys.exit()
 
         url = input(green('URL: '))
@@ -331,7 +334,7 @@ def remove(args):
         if group:
             group.delete()
         else:
-            log.info("No such group {}".format(bold(args.path)))
+            log.info(red("No such group ") + bold(args.path))
 
     # remove an entry
     else:
@@ -339,7 +342,7 @@ def remove(args):
         if entry:
             entry.delete()
         else:
-            log.info("No such entry {}".format(bold(args.path)))
+            log.info(red("No such entry ") + bold(args.path))
 
     kp.save()
 
