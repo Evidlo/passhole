@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-## Evan Widloski - 2017-03-07
-## Passhole - Keepass CLI + dmenu interface
+# Evan Widloski - 2017-03-07
+# Passhole - Keepass CLI + dmenu interface
 
 from __future__ import absolute_import
 from builtins import input
 from .version import __version__
 from pykeepass.pykeepass import PyKeePass
-from pykeepass.group import Group
-from pykeepass.entry import Entry
 from subprocess import Popen, PIPE, STDOUT
 from pykeyboard import PyKeyboard
 from getpass import getpass
@@ -17,11 +15,11 @@ from base64 import b64encode
 from io import BytesIO
 import gpgme
 import random
-import os, sys
+import os
+import sys
 import shutil
 import logging
 import argparse
-import pkg_resources
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -64,7 +62,7 @@ def init_database(args):
         password_confirm = getpass(green('Confirm: '))
 
         if not password == password_confirm:
-            log.info(red("Passwords do not match"))
+            log.error(red("Passwords do not match"))
             sys.exit()
 
         log.info("Creating database at {}".format(bold(args.database)))
@@ -84,19 +82,26 @@ def init_database(args):
                 sys.exit()
 
             with open(keyfile, 'w') as f:
-                contents = '<?xml version="1.0" encoding="UTF-8"?><KeyFile><Meta><Version>1.00</Version></Meta><Key><Data>{}</Data></Key></KeyFile>'
+                contents = '''
+                <?xml version="1.0" encoding="UTF-8"?>
+                <KeyFile>
+                    <Meta><Version>1.00</Version></Meta>
+                    <Key><Data>{}</Data></Key>
+                </KeyFile>'''
                 log.debug("keyfile contents {}".format(contents))
                 f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
+        # create database
         kp = PyKeePass(args.database, password='password')
         kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
+        # create password cache
         if password and not args.nocache:
             create_password_cache(args.cache, password, args.gpgkey)
 
     # quit if database already exists
     else:
-        log.info(red("Found existing database at ") + bold(args.database))
+        log.error(red("Found existing database at ") + bold(args.database))
         sys.exit()
 
 
@@ -111,15 +116,15 @@ def create_password_cache(cache, password, fingerprint):
             try:
                 selected_key = gpg.getkey(fingerprint.replace(' ', ''))
             except gpgme.GpgmeError:
-                log.error("Specified GPG key not found")
+                log.error(red("Specified GPG key not found"))
         # otherwise get the first key
         else:
             selected_key = keys[0]
     else:
-        log.error("No GPG keys found.  Try `gpg --gen-key` or use the `--nocache` option")
+        log.error(red("No GPG keys found.  Try `gpg --gen-key` or use the `--nocache` option"))
         sys.exit()
 
-
+    # encrypt password and write to cache file
     infile = BytesIO(password.encode('utf8'))
     with open(cache, 'wb') as outfile:
         gpg.encrypt([selected_key], 0, infile, outfile)
@@ -130,7 +135,7 @@ def create_password_cache(cache, password, fingerprint):
 def open_database(args):
     # check if database exists
     if not os.path.exists(args.database):
-        log.error("No database found at {}. Run `passhole init`".format(args.database))
+        log.error(red("No database found at ") + bold(args.database) +  red("Run `passhole init`"))
         sys.exit()
     # check if keyfile exists, try to use default keyfile
     if args.nokeyfile:
@@ -145,7 +150,7 @@ def open_database(args):
             if os.path.exists(args.keyfile):
                 keyfile = args.keyfile
             else:
-                log.error("No keyfile found at {}".format(bold(args.keyfile)))
+                log.error(red("No keyfile found at ") + bold(args.keyfile))
                 sys.exit()
 
     # retrieve password from cache
@@ -156,7 +161,7 @@ def open_database(args):
             try:
                 gpg.decrypt(infile, outfile)
             except:
-                log.info(red("Could not decrypt cache"))
+                log.error(red("Could not decrypt cache"))
         password = outfile.getvalue().decode('utf8')
         outfile.close()
     # if no cache, prompt for password and save it to cache
@@ -168,24 +173,24 @@ def open_database(args):
         else:
             NULL = open(os.devnull, 'w')
             p = Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
-                    stdin=PIPE,
-                    stdout=PIPE,
-                    stderr=NULL,
-                    close_fds=True)
+                      stdin=PIPE,
+                      stdout=PIPE,
+                      stderr=NULL,
+                      close_fds=True)
             password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
         if password:
             if not args.nocache:
                 create_password_cache(args.cache, password, args.gpgkey)
         else:
-            log.error("No password given")
+            log.error(red("No password given"))
             sys.exit()
 
     log.debug("opening {} with password:{} and keyfile:{}".format(args.database, password, keyfile))
     try:
         kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
-        log.info(red("Password or keyfile incorrect"))
+        log.error(red("Password or keyfile incorrect"))
         sys.exit()
     return kp
 
@@ -237,7 +242,7 @@ def show(args):
                  Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
         log.info(green("URL: ") + (entry.url or ''))
     else:
-        log.info(red("No such entry ") + bold(args.entry_path))
+        log.error(red("No such entry ") + bold(args.entry_path))
 
 
 # list entries as a tree
@@ -271,7 +276,7 @@ def add(args):
         group_path = ''
         title = args.path.strip('/')
         if not title:
-            log.info(red("No group name given"))
+            log.error(red("No group name given"))
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , title:{}".format(group_path, title))
@@ -279,13 +284,12 @@ def add(args):
     parent_group = kp.find_groups_by_path(group_path, first=True)
 
     if parent_group is None:
-        log.info(red("No such group ") + bold(group_path))
+        log.error(red("No such group ") + bold(group_path))
         return
 
     # create a new group
     if args.path.endswith('/'):
-        group = Group(title)
-        parent_group.append(group)
+        kp.add_group(parent_group, title)
         kp.save()
 
     # create a new entry
@@ -299,7 +303,7 @@ def add(args):
             with open(wordlist_file, 'r') as f:
                 wordlist = f.read().splitlines()
                 selected = rng.sample(wordlist, args.words)
-            password =  '.'.join(selected)
+            password = '.'.join(selected)
 
         # generate alphanumeric password
         elif args.alphanumeric:
@@ -316,7 +320,7 @@ def add(args):
             password = getpass(green('Password: '))
             password_confirm = getpass(green('Confirm: '))
             if not password == password_confirm:
-                log.info(red("Passwords do not match"))
+                log.error(red("Passwords do not match"))
                 sys.exit()
 
         url = input(green('URL: '))
@@ -334,7 +338,7 @@ def remove(args):
         if group:
             group.delete()
         else:
-            log.info(red("No such group ") + bold(args.path))
+            log.error(red("No such group ") + bold(args.path))
 
     # remove an entry
     else:
@@ -342,7 +346,7 @@ def remove(args):
         if entry:
             entry.delete()
         else:
-            log.info(red("No such entry ") + bold(args.path))
+            log.error(red("No such entry ") + bold(args.path))
 
     kp.save()
 
@@ -396,7 +400,6 @@ def main():
     parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look in default keyfile path")
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
-
 
     args = parser.parse_args()
 
