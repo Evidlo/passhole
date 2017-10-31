@@ -1,44 +1,36 @@
 Passhole
 ========
 
-Passhole is a CLI interface for KeePass 1.x (v3) and 2.x (v4) databases with support for dmenu.
-
-Passhole allows you to edit and generate passwords much in the same way as the popular `pass`_ utility. The `type` command can be used to type passwords out on the keyboard automatically.
+``passhole`` is a CLI interface for KeePass 1.x (v3) and 2.x (v4) databases with support for dmenu inspired by `pass`_.
 
 .. _pass: https://www.passwordstore.org
 
-Passhole can also generate `correct horse battery staple`_ style passwords, which have plenty of entropy (when using 5 or more words) and are easier to type out manually than random alphanumeric passwords.
+With ``passhole``, you can add existing passwords, generate new ones, and even autofill login forms in your browser.
+
+
+``passhole`` can also generate `correct horse battery staple`_ style passwords, which have plenty of entropy (when using 5 or more words) and are easier to type out manually than random alphanumeric passwords.
 
 .. _correct horse battery staple: http://xkcd.com/936
 
-Passhole makes use of gpg-agent to securely cache your database password for a few minutes. Passhole can also type out your passwords
+Passhole makes use of gpg-agent to securely cache your database password for a few minutes.
 
-Dependencies
+See below for examples and the `manual`_ for a complete list of commands and options.
+
+.. _manual: MANUAL.rst
+
+
+Setup
 ------------
-
-- PyUserInput
-- pykeepass
-
-Installation
-------------
-
-Install through pip
 
 .. code:: bash
 
    pip install passhole
+   ph init
 
 Example Usage
 --------------
 
 .. code:: bash
-
-   # initialize the database
-   >>> ph init
-   Creating database at /home/evan/.passhole.kdbx
-   Enter your desired database password
-   Password: 
-   Confirm:
 
    # add a new entry with manually created password
    >>> ph add github
