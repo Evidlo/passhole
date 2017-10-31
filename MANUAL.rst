@@ -51,7 +51,7 @@ OPTIONAL ARGS
 
   Disable password caching with gpg-agent and prompt for the password every time.                                                                        
                                                                                                    
-\-\-gpgkey
+\-\-gpgkey FINGERPRINT
 
   Specify GPG key to use when caching password, where ``FINGERPRINT`` is the fingerprint of the GPG key. ``passhole`` defaults to the first key in the    | keychain. Use ``gpg --list-keys --fingerprint`` to get a list of keys and their fingerprints.  
   
