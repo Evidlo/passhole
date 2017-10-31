@@ -87,7 +87,8 @@ def init_database(args):
                 <KeyFile>
                     <Meta><Version>1.00</Version></Meta>
                     <Key><Data>{}</Data></Key>
-                </KeyFile>'''
+                </KeyFile>
+                '''
                 log.debug("keyfile contents {}".format(contents))
                 f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
