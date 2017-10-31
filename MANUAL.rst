@@ -17,6 +17,9 @@ COMMANDS
 **add** [-h] [-w [length] | -a [length] | -s [length]] PATH
 
   Add a new entry/group to the database, where ``PATH`` is the full path to the group or entry.  Use ``-w``, ``-a``, or ``-s`` to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  ``length`` defaults to 5 words for ``-w`` and 32 characters for ``-a`` and ``-s`` unless otherwise specified.
+  
+.. _correct horse battery staple: http://xkcd.com/936
+
 
 **remove** [-h] PATH
 
