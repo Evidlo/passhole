@@ -5,10 +5,15 @@ Passhole
 
 .. _pass: https://www.passwordstore.org
 
-With ``passhole``, you can add existing passwords, generate new ones, and even autofill login forms in your browser.
+Features
+------------
 
+With ``passhole``, you can:
 
-``passhole`` can also generate `correct horse battery staple`_ style passwords, which have plenty of entropy (when using 5 or more words) and are easier to type out manually than random alphanumeric passwords.
+- add existing passwords
+- generate new passwords
+- autofill selected forms via keyboard shortcut
+- generate `correct horse battery staple`_ style passwords
 
 .. _correct horse battery staple: http://xkcd.com/936
 
@@ -68,10 +73,13 @@ Example Usage
    Password: inns.ambien.travelling.throw.force
    URL: twitter.com
 
-   # select entry using dmenu, then send password to keyboard
-   >>> ph type dmenu
-   inns.ambien.travelling.throw.force
+Example i3wm config for filling forms.
 
-   # select entry using dmenu, then send username and password to keyboard, separated by a tab
-   >>> ph type dmenu --tabbed
-   Evidlo	inns.ambien.travelling.throw.force
+.. code:: bash
+
+   # select entry using dmenu, then send password to keyboard
+   bindsym $mod+p exec ph type dmenu
+   # select entry using dmenu, then send username + password to keyboard
+   bindsym $mod+Shift+p ph type --tabbed dmenu
+
+

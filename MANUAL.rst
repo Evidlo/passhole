@@ -12,7 +12,8 @@ COMMANDS
 
 **type** [-h] [--tabbed] PROG
 
-  Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.
+type [-h] [--tabbed] PROG
+  Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
   
 **add** [-h] [-w [length] | -a [length] | -s [length]] PATH
 
@@ -32,6 +33,8 @@ COMMANDS
 **init** [-h]
 
   Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See ``--database`` and ``--keyfile`` to initialize in a non-default location.
+
+.. _correct horse battery staple: http://xkcd.com/936
 
 OPTIONAL ARGS
 -------------
@@ -119,10 +122,12 @@ Examples
    Password: inns.ambien.travelling.throw.force
    URL: twitter.com
 
-   # select entry using dmenu, then send password to keyboard
-   >>> ph type dmenu
-   inns.ambien.travelling.throw.force
+Example i3wm config
 
-   # select entry using dmenu, then send username and password to keyboard, separated by a tab
-   >>> ph type dmenu --tabbed
-   Evidlo	inns.ambien.travelling.throw.force
+.. code:: bash
+
+   # select entry using dmenu, then send password to keyboard
+   bindsym $mod+p exec ph type dmenu
+   # select entry using dmenu, then send username + password to keyboard
+   bindsym $mod+Shift+p ph type --tabbed dmenu
+​
