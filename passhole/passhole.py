@@ -389,8 +389,8 @@ def main():
     list_parser.set_defaults(func=list_entries)
 
     # process args for `init` command
-    list_parser = subparsers.add_parser('init', help="initialize a new database (default ~/.passhole.kdbx)")
-    list_parser.set_defaults(func=init_database)
+    init_parser = subparsers.add_parser('init', help="initialize a new database (default ~/.passhole.kdbx)")
+    init_parser.set_defaults(func=init_database)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")

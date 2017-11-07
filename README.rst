@@ -17,7 +17,7 @@ With ``passhole``, you can:
 
 .. _correct horse battery staple: http://xkcd.com/936
 
-Passhole makes use of gpg-agent to securely cache your database password for a few minutes.
+``passhole`` makes use of gpg-agent to securely cache your database password for a few minutes.
 
 See below for examples and the `manual`_ for a complete list of commands and options.
 
