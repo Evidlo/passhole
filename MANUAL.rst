@@ -1,38 +1,31 @@
 SYNOPSIS
 --------
 
-**ph** [OPTIONAL ARGS] [COMMAND] [OPTIONS] [ARGS]
+**ph** [OPTIONAL ARGS] [COMMAND] [COMMAND OPTIONS] [COMMAND ARGS]
 
 COMMANDS
 --------
 
-**show** [-h] PATH
-
+show [-h] PATH
     Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.
 
-**type** [-h] [--tabbed] PROG
-
 type [-h] [--tabbed] PROG
-  Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
+    Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
   
-**add** [-h] [-w [length] | -a [length] | -s [length]] PATH
-
-  Add a new entry/group to the database, where ``PATH`` is the full path to the group or entry.  Use ``-w``, ``-a``, or ``-s`` to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  ``length`` defaults to 5 words for ``-w`` and 32 characters for ``-a`` and ``-s`` unless otherwise specified.
+add [-h] [-w [length] | -a [length] | -s [length]] PATH
+    Add a new entry/group to the database, where ``PATH`` is the full path to the group or entry.  Use ``-w``, ``-a``, or ``-s`` to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  ``length`` defaults to 5 words for ``-w`` and 32 characters for ``-a`` and ``-s`` unless otherwise specified.
   
 .. _correct horse battery staple: http://xkcd.com/936
 
 
-**remove** [-h] PATH
+remove [-h] PATH
+    Remove an entry/group from the database, where ``PATH`` is the full path to the group or entry.
 
-  Remove an entry/group from the database, where ``PATH`` is the full path to the group or entry.
+list [-h]
+    List entries/groups in the database.
 
-**list** [-h]
-
-  List entries/groups in the database.
-
-**init** [-h]
-
-  Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See ``--database`` and ``--keyfile`` to initialize in a non-default location.
+init [-h]
+    Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See ``--database`` and ``--keyfile`` to initialize in a non-default location.
 
 .. _correct horse battery staple: http://xkcd.com/936
 
@@ -40,38 +33,40 @@ OPTIONAL ARGS
 -------------
 
 \-h, \-\-help
-
   Print out a help message and exit. Use in conjunction with a command for command-specific help.                                                                                                                                                   
 \-\-debug
-
   Enable debug messages.
                                                                                                    
 \-\-cache PATH
-
   Specify location to cache password with gpg-agent, where ``PATH`` is a location on the filesystem. Defaults to ``~/.cache/passhole_cache``   
   
 \-\-nocache
-
   Disable password caching with gpg-agent and prompt for the password every time.                                                                        
                                                                                                    
 \-\-gpgkey FINGERPRINT
-
   Specify GPG key to use when caching password, where ``FINGERPRINT`` is the fingerprint of the GPG key. ``passhole`` defaults to the first key in the    | keychain. Use ``gpg --list-keys --fingerprint`` to get a list of keys and their fingerprints.  
   
 \-\-keyfile PATH
-
   Specify the path to the keyfile when initializing, accessing or modifying the database. Defaults to ``~/.passhole.key``                                    
 \-\-nokeyfile
-
   Don't use a keyfile when accessing or modifying the database.
                                                                                                    
 \-\-database PATH
-
   Specify the path to the KeePass database when initializing, accessing or modifying the database. Defaults to ``~/.passhole.kdbx``                     
 
 \-v, \-\-version
-
   Print out version information.                                               
+
+Files
+-----
+~/passhole.kdbx
+    Default location of KeePass database. Override with ``--database PATH``
+
+~/passhole.key
+    Default location KeePass key.  Override with ``--keyfile PATH`` and disable with ``--nokeyfile``.
+
+~/.cache/passhole_cache
+    Default location where gpg agent temporarily caches the database password.  Override with ``--cache`` and disable with ``--nocache``. 
                                                                                                    
 
 Examples
