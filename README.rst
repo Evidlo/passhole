@@ -80,6 +80,6 @@ Example i3wm config for filling forms.
    # select entry using dmenu, then send password to keyboard
    bindsym $mod+p exec ph type dmenu
    # select entry using dmenu, then send username + password to keyboard
-   bindsym $mod+Shift+p ph type --tabbed dmenu
+   bindsym $mod+Shift+p exec ph type --tabbed dmenu
 
 
