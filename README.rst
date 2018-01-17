@@ -12,7 +12,7 @@ With ``passhole``, you can:
 
 - add existing passwords
 - generate new passwords
-- autofill selected forms via keyboard shortcut
+- autofill selected forms via keyboard shortcut (using the ``type`` command)
 - generate `correct horse battery staple`_ style passwords
 
 .. _correct horse battery staple: http://xkcd.com/936
