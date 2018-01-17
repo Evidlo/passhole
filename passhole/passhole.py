@@ -168,7 +168,7 @@ def open_database(args):
     # if no cache, prompt for password and save it to cache
     else:
         # check if running in interactive shell
-        if os.isatty(sys.stdout.fileno()):
+        if sys.stdout.isatty():
             password = getpass('Enter password: ')
         # otherwise use zenity
         else:
@@ -237,11 +237,17 @@ def show(args):
 
     entry = kp.find_entries_by_path(args.entry_path, first=True)
     if entry:
-        log.info(green("Title: ") + (entry.title or ''))
-        log.info(green("Username: ") + (entry.username or ''))
-        log.info(green("Password: ") +
-                 Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
-        log.info(green("URL: ") + (entry.url or ''))
+        if args.field:
+            if args.field.lower() in ('title', 'username', 'password', 'url'):
+                log.info(getattr(entry, args.field.lower()))
+            else:
+                log.error(red("Invalid field ") + bold(args.field.lower()))
+        else:
+            log.info(green("Title: ") + (entry.title or ''))
+            log.info(green("Username: ") + (entry.username or ''))
+            log.info(green("Password: ") +
+                    Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
+            log.info(green("URL: ") + (entry.url or ''))
     else:
         log.error(red("No such entry ") + bold(args.entry_path))
 
@@ -363,6 +369,7 @@ def main():
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
     show_parser.add_argument('entry_path', metavar='PATH', type=str, help="Path to KeePass entry")
+    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a particular field as plaintext")
     show_parser.set_defaults(func=show)
 
     # process args for `type` command
