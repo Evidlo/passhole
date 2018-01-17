@@ -73,6 +73,10 @@ Example Usage
    Password: inns.ambien.travelling.throw.force
    URL: twitter.com
 
+   # retrieve contents of specific field
+   >>> ph show social/twitter --field username
+   Evidlo
+
 Example i3wm config for filling forms.
 
 .. code:: bash
