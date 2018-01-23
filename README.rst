@@ -54,9 +54,13 @@ Example Usage
    
    # add an entry to `social/` with a 32 character password (alphanumeric + symbols)
    >>> ph add social/facebook -s 32
+   Username: evan@evanw.org
+   URL: facebook.com
 
    # add an entry to `social/` with a correct-horse-battery-staple type password
    >>> ph add social/twitter -w
+   Username: evan@evanw.org
+   URL: twitter.com
 
    # list all entries
    >>> ph list
@@ -73,9 +77,9 @@ Example Usage
    Password: inns.ambien.travelling.throw.force
    URL: twitter.com
 
-   # retrieve contents of specific field
-   >>> ph show social/twitter --field username
-   Evidlo
+   # retrieve contents of specific field for use in scripts
+   >>> ph show social/twitter --field password
+   inns.ambien.travelling.throw.force
 
 Example i3wm config for filling forms.
 

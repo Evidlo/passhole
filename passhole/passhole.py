@@ -4,6 +4,7 @@
 # Passhole - Keepass CLI + dmenu interface
 
 from __future__ import absolute_import
+from __future__ import print_function
 from builtins import input
 from .version import __version__
 from pykeepass.pykeepass import PyKeePass
@@ -57,7 +58,7 @@ def init_database(args):
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
-        log.info("Enter your desired database password")
+        print("Enter your desired database password")
         password = getpass(green('Password: '))
         password_confirm = getpass(green('Confirm: '))
 
@@ -65,7 +66,7 @@ def init_database(args):
             log.error(red("Passwords do not match"))
             sys.exit()
 
-        log.info("Creating database at {}".format(bold(args.database)))
+        print("Creating database at {}".format(bold(args.database)))
         shutil.copy(template_database_file, args.database)
 
         use_keyfile = input("Would you like to generate a keyfile? (Y/n): ")
@@ -78,7 +79,7 @@ def init_database(args):
 
             log.debug("Looking for keyfile at {}".format(keyfile))
             if os.path.exists(keyfile):
-                log.info("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
+                print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
                 sys.exit()
 
             with open(keyfile, 'w') as f:
@@ -239,15 +240,15 @@ def show(args):
     if entry:
         if args.field:
             if args.field.lower() in ('title', 'username', 'password', 'url'):
-                log.info(getattr(entry, args.field.lower()))
+                print(getattr(entry, args.field.lower()), end='')
             else:
                 log.error(red("Invalid field ") + bold(args.field.lower()))
         else:
-            log.info(green("Title: ") + (entry.title or ''))
-            log.info(green("Username: ") + (entry.username or ''))
-            log.info(green("Password: ") +
+            print(green("Title: ") + (entry.title or ''))
+            print(green("Username: ") + (entry.username or ''))
+            print(green("Password: ") +
                     Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
-            log.info(green("URL: ") + (entry.url or ''))
+            print(green("URL: ") + (entry.url or ''))
     else:
         log.error(red("No such entry ") + bold(args.entry_path))
 
@@ -257,17 +258,17 @@ def list_entries(args):
     kp = open_database(args)
 
     def list_items(group, depth):
-        log.info(bold(blue(' ' * depth + '[{}]'.format(group.name))))
+        print(bold(blue(' ' * depth + '[{}]'.format(group.name))))
         for entry in sorted(group.entries, key=lambda x: x.__str__()):
             if entry == group.entries[-1]:
-                log.info(' ' * depth + "└── {0}".format(entry.title))
+                print(' ' * depth + "└── {0}".format(entry.title))
             else:
-                log.info(' ' * depth + "├── {0}".format(entry.title))
+                print(' ' * depth + "├── {0}".format(entry.title))
         for group in sorted(group.subgroups, key=lambda x: x.__str__()):
             list_items(group, depth+4)
 
     for entry in sorted(kp.root_group.entries, key=lambda x: x.__str__()):
-        log.info(entry.title)
+        print(entry.title)
     for group in sorted(kp.root_group.subgroups, key=lambda x: x.__str__()):
         list_items(group, 0)
 
@@ -412,7 +413,7 @@ def main():
     args = parser.parse_args()
 
     if args.debug:
-        log.info('Debugging enabled...')
+        print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
 
     args.func(args)
