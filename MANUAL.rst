@@ -7,7 +7,7 @@ COMMANDS
 --------
 
 show [-h] [--field FIELD] PATH
-    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``--field FIELD`` to print only the specified field, in plaintext.  ``title``, ``username``, ``password``, and ``url`` are supported values.
+    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``--field FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
 
 type [-h] [--tabbed] PROG
     Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.

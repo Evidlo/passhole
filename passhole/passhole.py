@@ -370,7 +370,7 @@ def main():
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
     show_parser.add_argument('entry_path', metavar='PATH', type=str, help="Path to KeePass entry")
-    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field, as plaintext")
+    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field as plaintext")
     show_parser.set_defaults(func=show)
 
     # process args for `type` command
