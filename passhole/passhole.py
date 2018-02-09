@@ -41,6 +41,7 @@ template_database_file = os.path.join(base_dir, 'blank.kdbx')
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
+string_fields = {'username':'UserName', 'url':'URL', 'password':'Password', 'notes':'Notes'}
 
 gpg = gpgme.Context()
 
@@ -138,7 +139,7 @@ def create_password_cache(cache, password, fingerprint):
 def open_database(args):
     # check if database exists
     if not os.path.exists(args.database):
-        log.error(red("No database found at ") + bold(args.database) +  red("Run `passhole init`"))
+        log.error(red("No database found at ") + bold(args.database) +  red(".  Run `passhole init`"))
         sys.exit()
     # check if keyfile exists, try to use default keyfile
     if args.nokeyfile:
@@ -170,7 +171,7 @@ def open_database(args):
     # if no cache, prompt for password and save it to cache
     else:
         # check if running in interactive shell
-        if sys.stdout.isatty():
+        if os.isatty(sys.stdout.fileno()):
             password = getpass('Enter password: ')
         # otherwise use zenity
         else:
@@ -207,7 +208,7 @@ def type_entries(args):
     items = '\n'.join(entry_paths)
 
     # get the entry from dmenu
-    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT, shell=True)
     stdout = p.communicate(input=items.encode('utf-8'))[0].decode('utf-8')
     selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
 
@@ -240,8 +241,10 @@ def show(args):
     entry = kp.find_entries(path=args.entry_path, first=True)
     if entry:
         if args.field:
-            if args.field.lower() in ('title', 'username', 'password', 'url'):
-                print(getattr(entry, args.field.lower()), end='')
+            if args.field in string_fields.keys():
+                args.field = string_fields[args.field]
+            if args.field in entry._get_string_field_keys():
+                print(entry._get_string_field(args.field), end='')
             else:
                 log.error(red("Invalid field ") + bold(args.field.lower()))
         else:
@@ -271,10 +274,10 @@ def list_entries(args):
         groups = sorted(group.subgroups, key=lambda x: x.__str__())
         for group in groups:
             if group == groups[-1]:
-                print(prefix + branch_corner + blue(bold("{0}")).format(group.name))
+                print(prefix + branch_corner + blue(bold("[{0}]")).format(group.name))
                 list_items(group, prefix + "    ")
             else:
-                print(prefix + branch_tee + blue(bold("{0}")).format(group.name))
+                print(prefix + branch_tee + blue(bold("[{0}]")).format(group.name))
                 list_items(group, prefix + branch_pipe)
 
     list_items(kp.root_group, "", show_branches=False)
@@ -285,6 +288,9 @@ def grep(args):
 
     flags = 'i' if args.i else None
     log.debug("Searching database for pattern: {}".format(args.pattern))
+    if args.field and args.field in string_fields.keys():
+        args.field = string_fields[args.field]
+
     entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
 
     for entry in entries:
