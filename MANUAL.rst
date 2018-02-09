@@ -21,13 +21,19 @@ add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] PATH
 remove [-h] PATH
     Remove an entry/group from the database, where ``PATH`` is the full path to the group or entry.
 
+move [-h] SRC_PATH DEST_PATH
+    Move an entry/group to another path, where ``SRC_PATH`` and ``DEST_PATH`` are the full paths to the source and destination items.  Providing two entry paths or two group paths will move and rename the group or entry.
+
 list [-h]
     List entries/groups in the database.
+
+grep [-h] [-i] [--field FIELD] PATTERN
+    List entries which match a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``--field FIELD`` option to limit search to a specific KeePass string field, where ``FIELD`` is one of ``title``, ``username``, ``password``, or ``url``.  Use the ``-i`` option to enable case insensitive searching.
 
 init [-h]
     Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See ``--database`` and ``--keyfile`` to initialize in a non-default location.
 
-.. _correct horse battery staple: http://xkcd.com/936
+.. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
 
 OPTIONAL ARGS
 -------------
@@ -98,9 +104,13 @@ Examples
    
    # add an entry to `social/` with a 32 character password (alphanumeric + symbols)
    >>> ph add social/facebook -s 32
+   Username: Evidlo
+   URL: facebook.com
 
    # add an entry to `social/` with a correct-horse-battery-staple type password
    >>> ph add social/twitter -w
+   Username: Evidlo
+   URL: twitter.com
 
    # list all entries
    >>> ph list

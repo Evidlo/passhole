@@ -21,6 +21,7 @@ import sys
 import shutil
 import logging
 import argparse
+import readline
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -214,7 +215,7 @@ def type_entries(args):
     if not selection_path:
         return None
 
-    selected_entry = kp.find_entries_by_path(selection_path, first=True)
+    selected_entry = kp.find_entries(path=selection_path, first=True)
 
     log.debug("selected_entry:{}".format(selected_entry))
 
@@ -236,7 +237,7 @@ def type_entries(args):
 def show(args):
     kp = open_database(args)
 
-    entry = kp.find_entries_by_path(args.entry_path, first=True)
+    entry = kp.find_entries(path=args.entry_path, first=True)
     if entry:
         if args.field:
             if args.field.lower() in ('title', 'username', 'password', 'url'):
@@ -257,39 +258,63 @@ def show(args):
 def list_entries(args):
     kp = open_database(args)
 
-    def list_items(group, depth):
-        print(bold(blue(' ' * depth + '[{}]'.format(group.name))))
-        for entry in sorted(group.entries, key=lambda x: x.__str__()):
-            if entry == group.entries[-1]:
-                print(' ' * depth + "└── {0}".format(entry.title))
+    def list_items(group, prefix, show_branches=True):
+        branch_corner = "└── " if show_branches else ""
+        branch_tee = "├── " if show_branches else ""
+        branch_pipe = "│   " if show_branches else ""
+        entries = sorted(group.entries, key=lambda x: x.title)
+        for entry in entries:
+            if entry == entries[-1] and len(group.subgroups) == 0:
+                print(prefix + branch_corner + entry.title)
             else:
-                print(' ' * depth + "├── {0}".format(entry.title))
-        for group in sorted(group.subgroups, key=lambda x: x.__str__()):
-            list_items(group, depth+4)
+                print(prefix + branch_tee + entry.title)
+        groups = sorted(group.subgroups, key=lambda x: x.__str__())
+        for group in groups:
+            if group == groups[-1]:
+                print(prefix + branch_corner + blue(bold("{0}")).format(group.name))
+                list_items(group, prefix + "    ")
+            else:
+                print(prefix + branch_tee + blue(bold("{0}")).format(group.name))
+                list_items(group, prefix + branch_pipe)
 
-    for entry in sorted(kp.root_group.entries, key=lambda x: x.__str__()):
-        print(entry.title)
-    for group in sorted(kp.root_group.subgroups, key=lambda x: x.__str__()):
-        list_items(group, 0)
+    list_items(kp.root_group, "", show_branches=False)
+
+# search all string fields for a string
+def grep(args):
+    kp = open_database(args)
+
+    flags = 'i' if args.i else None
+    log.debug("Searching database for pattern: {}".format(args.pattern))
+    entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
+
+    for entry in entries:
+        print(entry.path)
+
+
+# process path into parent group and child item
+def decompose_path(path):
+    if '/' in path.strip('/'):
+        [group_path, child_name] = path.strip('/').rsplit('/', 1)
+    else:
+        group_path = ''
+        child_name = path.strip('/')
+
+    log.debug("Decomposed path into: '{}' and '{}'".format(group_path + '/', child_name))
+    return [group_path + '/', child_name]
 
 
 # create new entry/group
 def add(args):
     kp = open_database(args)
 
-    # process path into group path and entry title
-    if '/' in args.path.strip('/'):
-        [group_path, title] = args.path.strip('/').rsplit('/', 1)
-    else:
-        group_path = ''
-        title = args.path.strip('/')
-        if not title:
-            log.error(red("No group name given"))
+    [group_path, child_name] = decompose_path(args.path)
+    if not child_name:
+        log.error(red("Path is invalid"))
 
     log.debug("args.path:{}".format(args.path))
-    log.debug("group_path:{} , title:{}".format(group_path, title))
+    log.debug("group_path:{} , child_name:{}".format(group_path, child_name))
 
-    parent_group = kp.find_groups_by_path(group_path, first=True)
+    parent_group = kp.find_groups(path=group_path, first=True)
 
     if parent_group is None:
         log.error(red("No such group ") + bold(group_path))
@@ -297,8 +322,7 @@ def add(args):
 
     # create a new group
     if args.path.endswith('/'):
-        kp.add_group(parent_group, title)
-        kp.save()
+        kp.add_group(parent_group, child_name)
 
     # create a new entry
     else:
@@ -332,8 +356,9 @@ def add(args):
                 sys.exit()
 
         url = input(green('URL: '))
-        kp.add_entry(parent_group, title, username, password, url=url)
-        kp.save()
+        kp.add_entry(parent_group, child_name, username, password, url=url)
+
+    kp.save()
 
 
 # remove an entry/group
@@ -342,22 +367,69 @@ def remove(args):
 
     # remove a group
     if args.path.endswith('/'):
-        group = kp.find_groups_by_path(args.path, first=True)
+        group = kp.find_groups(path=args.path, first=True)
         if group:
             group.delete()
         else:
             log.error(red("No such group ") + bold(args.path))
+            sys.exit()
 
     # remove an entry
     else:
-        entry = kp.find_entries_by_path(args.path, first=True)
+        entry = kp.find_entries(path=args.path, first=True)
         if entry:
             entry.delete()
         else:
             log.error(red("No such entry ") + bold(args.path))
+            sys.exit()
 
     kp.save()
 
+# move an entry/group
+def move(args):
+    kp = open_database(args)
+
+    [group_path, child_name] = decompose_path(args.dest_path)
+    parent_group = kp.find_groups(path=group_path, first=True)
+
+    if args.src_path.endswith('/'):
+        src = kp.find_groups(path=args.src_path, first=True)
+        if src:
+            if args.dest_path.endswith('/'):
+                dest = kp.find_groups(path=args.dest_path, first=True)
+                if dest:
+                    kp.move_group(src, dest)
+                else:
+                    src.name = child_name
+                    kp.move_group(src, parent_group)
+            else:
+                log.error(red("Destination must end in '/'"))
+
+        else:
+            log.error(red("No such group ") + bold(args.src_path))
+    else:
+        src = kp.find_entries(path=args.src_path, first=True)
+        if src:
+            if args.dest_path.endswith('/'):
+                dest = kp.find_groups(path=args.dest_path, first=True)
+                if dest:
+                    kp.move_entry(src, dest)
+                    log.debug("Moving entry: {} -> {}".format(src, dest))
+                else:
+                    log.error(red("No such group ") + bold(args.dest_path))
+            else:
+                dest = kp.find_entries(path=args.dest_path, first=True)
+                if dest:
+                    log.error(red("There is already an entry at ") + bold(args.dest_path))
+                else:
+                    log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
+                    src.title = child_name
+                    log.debug("Moving entry: {} -> {}".format(src, parent_group))
+                    kp.move_entry(src, parent_group)
+        else:
+            log.error(red("No such entry ") + bold(args.src_path))
+
+    kp.save()
 
 def main():
     parser = argparse.ArgumentParser(description="Append -h to any command to view its syntax.")
@@ -388,13 +460,26 @@ def main():
     add_parser.set_defaults(func=add)
 
     # process args for `remove` command
-    remove_parser = subparsers.add_parser('remove', help="remove an entry (e.g. `foo`) or group (e.g. `foo/`)")
+    remove_parser = subparsers.add_parser('remove', aliases=['rm'], help="remove an entry (e.g. `foo`) or group (e.g. `foo/`)")
     remove_parser.add_argument('path', metavar='PATH', type=str, help="path to KeePass entry/group to delete")
     remove_parser.set_defaults(func=remove)
 
+    # process args for `move` command
+    move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry (e.g. `foo`) or group (e.g. `foo/`)")
+    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help="path to KeePass entry/group to move")
+    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help="path to KeePass destination group")
+    move_parser.set_defaults(func=move)
+
     # process args for `list` command
-    list_parser = subparsers.add_parser('list', help="list entries in the database")
+    list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
     list_parser.set_defaults(func=list_entries)
+
+    # process args for `grep` command
+    grep_parser = subparsers.add_parser('grep', help="list entries with fields matching regex pattern")
+    grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
+    grep_parser.add_argument('--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
+    grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
+    grep_parser.set_defaults(func=grep)
 
     # process args for `init` command
     init_parser = subparsers.add_parser('init', help="initialize a new database (default ~/.passhole.kdbx)")
