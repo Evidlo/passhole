@@ -23,6 +23,7 @@ See below for examples and the `manual`_ for a complete list of commands and opt
 
 .. _manual: MANUAL.rst
 
+.. image:: https://i.imgur.com/U7q5jxJ.gif
 
 Setup
 ------------
