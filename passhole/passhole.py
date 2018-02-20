@@ -34,8 +34,8 @@ keyfile_path = os.path.expanduser('~/.passhole.key')
 passhole_cache = os.path.expanduser('~/.cache/passhole_cache')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
-# taken from http://www.mit.edu/~ecprice/wordlist.10000
-wordlist_file = os.path.join(base_dir, 'wordlist.10000')
+# taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
+wordlist_file = os.path.join(base_dir, 'wordlist.txt')
 template_database_file = os.path.join(base_dir, 'blank.kdbx')
 
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
@@ -205,7 +205,7 @@ def type_entries(args):
     kp = open_database(args)
 
     entry_paths = [entry.path for entry in kp.entries]
-    items = '\n'.join(entry_paths)
+    items = '\n'.join(sorted(entry_paths))
 
     # get the entry from dmenu
     p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT, shell=True)
@@ -240,13 +240,16 @@ def show(args):
 
     entry = kp.find_entries(path=args.entry_path, first=True)
     if entry:
+        # show specified field
         if args.field:
+            # handle lowercase field input gracefully
             if args.field in string_fields.keys():
                 args.field = string_fields[args.field]
             if args.field in entry._get_string_field_keys():
                 print(entry._get_string_field(args.field), end='')
             else:
                 log.error(red("Invalid field ") + bold(args.field.lower()))
+        # otherwise, show all fields
         else:
             print(green("Title: ") + (entry.title or ''))
             print(green("Username: ") + (entry.username or ''))
@@ -261,6 +264,7 @@ def show(args):
 def list_entries(args):
     kp = open_database(args)
 
+    # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
         branch_corner = "└── " if show_branches else ""
         branch_tee = "├── " if show_branches else ""
@@ -288,6 +292,7 @@ def grep(args):
 
     flags = 'i' if args.i else None
     log.debug("Searching database for pattern: {}".format(args.pattern))
+    # handle lowercase field input gracefully
     if args.field and args.field in string_fields.keys():
         args.field = string_fields[args.field]
 
@@ -398,9 +403,11 @@ def move(args):
     [group_path, child_name] = decompose_path(args.dest_path)
     parent_group = kp.find_groups(path=group_path, first=True)
 
+    # if source path is group
     if args.src_path.endswith('/'):
         src = kp.find_groups(path=args.src_path, first=True)
         if src:
+            # if dest path is group
             if args.dest_path.endswith('/'):
                 dest = kp.find_groups(path=args.dest_path, first=True)
                 if dest:
@@ -408,14 +415,17 @@ def move(args):
                 else:
                     src.name = child_name
                     kp.move_group(src, parent_group)
+            # if dest path is entry
             else:
                 log.error(red("Destination must end in '/'"))
 
         else:
             log.error(red("No such group ") + bold(args.src_path))
+    # if source path is entry
     else:
         src = kp.find_entries(path=args.src_path, first=True)
         if src:
+            # if dest path is group
             if args.dest_path.endswith('/'):
                 dest = kp.find_groups(path=args.dest_path, first=True)
                 if dest:
@@ -423,6 +433,7 @@ def move(args):
                     log.debug("Moving entry: {} -> {}".format(src, dest))
                 else:
                     log.error(red("No such group ") + bold(args.dest_path))
+            # if dest path is entry
             else:
                 dest = kp.find_entries(path=args.dest_path, first=True)
                 if dest:
@@ -445,9 +456,11 @@ def main():
     subparsers.dest = 'command'
     subparsers.required = True
 
+    path_help = 'path to entry (e.g. \'foo\') or group (e.g. \'foo/\')'
+
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
-    show_parser.add_argument('entry_path', metavar='PATH', type=str, help="Path to KeePass entry")
+    show_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
     show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field as plaintext")
     show_parser.set_defaults(func=show)
 
@@ -458,22 +471,22 @@ def main():
     type_parser.set_defaults(func=type_entries)
 
     # process args for `add` command
-    add_parser = subparsers.add_parser('add', help="add new entry (e.g. `foo`) or group (e.g. `foo/`)")
-    add_parser.add_argument('path', metavar='PATH', type=str, help="path to new KeePass entry/group")
-    add_parser.add_argument('-w', '--words', metavar='length', type=int, nargs='?', const=5, default=None, help="generate 'correct horse battery staple' style password (https://xkcd.com/936/) when creating entry ")
+    add_parser = subparsers.add_parser('add', help="add new entry or group")
+    add_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
+    add_parser.add_argument('-w', '--words', metavar='length', type=int, nargs='?', const=6, default=None, help="generate 'correct horse battery staple' style password when creating entry ")
     add_parser.add_argument('-a', '--alphanumeric', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric password")
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
     add_parser.set_defaults(func=add)
 
     # process args for `remove` command
-    remove_parser = subparsers.add_parser('remove', aliases=['rm'], help="remove an entry (e.g. `foo`) or group (e.g. `foo/`)")
-    remove_parser.add_argument('path', metavar='PATH', type=str, help="path to KeePass entry/group to delete")
+    remove_parser = subparsers.add_parser('remove', aliases=['rm'], help="remove an entry")
+    remove_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
     remove_parser.set_defaults(func=remove)
 
     # process args for `move` command
-    move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry (e.g. `foo`) or group (e.g. `foo/`)")
-    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help="path to KeePass entry/group to move")
-    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help="path to KeePass destination group")
+    move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry or group")
+    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help=path_help)
+    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help=path_help)
     move_parser.set_defaults(func=move)
 
     # process args for `list` command
@@ -488,7 +501,7 @@ def main():
     grep_parser.set_defaults(func=grep)
 
     # process args for `init` command
-    init_parser = subparsers.add_parser('init', help="initialize a new database (default ~/.passhole.kdbx)")
+    init_parser = subparsers.add_parser('init', help="initialize a new database")
     init_parser.set_defaults(func=init_database)
 
     # optional arguments
@@ -497,8 +510,8 @@ def main():
     parser.add_argument('--nocache', action='store_true', default=False, help="don't cache database password")
     parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
-    parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look in default keyfile path")
-    parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="use a different database path")
+    parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look for a database keyfile or create one")
+    parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="specify database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
     args = parser.parse_args()
