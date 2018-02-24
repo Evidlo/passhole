@@ -5,25 +5,30 @@ Passhole
 
 .. _pass: https://www.passwordstore.org
 
+.. image:: https://i.imgur.com/U7q5jxJ.gif
+
+- `Features`_
+- `Setup`_
+- `Example Usage`_
+- `Example i3 Keybindings`_
+- `Troubleshooting GPG Keys`_
+- `Manual`_
+
+
 Features
 ------------
 
-With ``passhole``, you can:
-
 - add existing passwords
-- generate new passwords
-- autofill selected forms via keyboard shortcut (using the ``type`` command)
 - generate `correct horse battery staple`_ style passwords
+- generate alphanumeric passwords
+- temporarily caches database password for 10 minutes
+- autofill selected forms via keyboard shortcut (using the ``type`` command)
 
 .. _correct horse battery staple: http://xkcd.com/936
-
-``passhole`` makes use of gpg-agent to securely cache your database password for a few minutes.
 
 See below for examples and the `manual`_ for a complete list of commands and options.
 
 .. _manual: MANUAL.rst
-
-.. image:: https://i.imgur.com/U7q5jxJ.gif
 
 Setup
 ------------
@@ -82,7 +87,8 @@ Example Usage
    >>> ph show social/twitter --field password
    inns.ambien.travelling.throw.force
 
-Example i3wm config for filling forms.
+Example i3 Keybindings
+----------------------
 
 .. code:: bash
 
@@ -91,4 +97,10 @@ Example i3wm config for filling forms.
    # select entry using dmenu, then send username + password to keyboard
    bindsym $mod+Shift+p exec ph type dmenu --tabbed
 
+Troubleshooting GPG Keys
+------------------------
+
+`passhole` uses `gpg` to store your database password encrypted on disk to take advantage of the password caching features of `gpg-agent`.  By default `passhole` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using `gpg2`.  If you created your key with `gpg`, you can export your keys to `gpg2` `like this`_.
+
+.. _like this: https://superuser.com/questions/1098768/synchronize-gnupg-1-4-and-gnupg-2-1-keychains 
 

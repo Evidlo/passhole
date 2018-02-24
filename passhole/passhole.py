@@ -52,7 +52,7 @@ def green(text):
 def blue(text):
     return Fore.BLUE + text + Fore.RESET
 def bold(text):
-    return Style.BRIGHT + text + Style.RESET_ALL
+    return Style.BRIGHT + text + Style.NORMAL
 
 
 # create database
@@ -105,7 +105,7 @@ def init_database(args):
 
     # quit if database already exists
     else:
-        log.error(red("Found existing database at ") + bold(args.database))
+        log.error(red("Found existing file at ") + bold(args.database))
         sys.exit()
 
 
@@ -118,20 +118,32 @@ def create_password_cache(cache, password, fingerprint):
         if fingerprint:
             log.debug("Selected fingerprint: {}".format(fingerprint))
             try:
-                selected_key = gpg.getkey(fingerprint.replace(' ', ''))
+                selected_key = gpg.get_key(fingerprint.replace(' ', ''))
             except gpgme.GpgmeError:
                 log.error(red("Specified GPG key not found"))
         # otherwise get the first key
         else:
             selected_key = keys[0]
     else:
-        log.error(red("No GPG keys found.  Try `gpg --gen-key` or use the `--nocache` option"))
+        log.error(red("no GPG keys found. Try ") +
+                  bold("gpg2 --gen-key") + red(" or use the ") +
+                  bold("--nocache") + red(" option"))
         sys.exit()
 
     # encrypt password and write to cache file
     infile = BytesIO(password.encode('utf8'))
-    with open(cache, 'wb') as outfile:
-        gpg.encrypt([selected_key], 0, infile, outfile)
+    try:
+        with open(cache, 'wb') as outfile:
+            gpg.encrypt([selected_key], 0, infile, outfile)
+    except gpgme.GpgmeError as e:
+        # gpgkey is not trusted
+        if e.code == gpgme.ERR_UNUSABLE_PUBKEY:
+            log.error(red("Your GPG key is untrusted.  Run " + bold("gpg2 --edit-key \"{}\" trust".format(selected_key.uids[0].name)) + red(" to change the trust level")))
+            os.remove(cache)
+            sys.exit()
+        else:
+            raise e
+
     infile.close()
 
 
@@ -139,7 +151,7 @@ def create_password_cache(cache, password, fingerprint):
 def open_database(args):
     # check if database exists
     if not os.path.exists(args.database):
-        log.error(red("No database found at ") + bold(args.database) +  red(".  Run `passhole init`"))
+        log.error(red("No database found at ") + bold(args.database) +  red(".  Run ") +  bold("ph init"))
         sys.exit()
     # check if keyfile exists, try to use default keyfile
     if args.nokeyfile:
@@ -164,8 +176,13 @@ def open_database(args):
         with open(args.cache, 'rb') as infile:
             try:
                 gpg.decrypt(infile, outfile)
-            except:
-                log.error(red("Could not decrypt cache"))
+            except gpgme.GpgmeError as e:
+                if e.code == gpgme.ERR_DECRYPT_FAILED:
+                    log.error(red("Could not decrypt cache"))
+                    sys.exit()
+                else:
+                    raise e
+
         password = outfile.getvalue().decode('utf8')
         outfile.close()
     # if no cache, prompt for password and save it to cache
@@ -195,6 +212,8 @@ def open_database(args):
         kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
         log.error(red("Password or keyfile incorrect"))
+        if os.path.exists(os.path.expanduser(args.cache)) and not args.nocache:
+            log.error(red("Try clearing the cache at ") + bold(args.cache))
         sys.exit()
     return kp
 
@@ -285,6 +304,7 @@ def list_entries(args):
                 list_items(group, prefix + branch_pipe)
 
     list_items(kp.root_group, "", show_branches=False)
+
 
 # search all string fields for a string
 def grep(args):
@@ -396,6 +416,7 @@ def remove(args):
 
     kp.save()
 
+
 # move an entry/group
 def move(args):
     kp = open_database(args)
@@ -447,6 +468,7 @@ def move(args):
             log.error(red("No such entry ") + bold(args.src_path))
 
     kp.save()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Append -h to any command to view its syntax.")
@@ -521,6 +543,7 @@ def main():
         log.setLevel(logging.DEBUG)
 
     args.func(args)
+
 
 if __name__ == '__main__':
     try:
