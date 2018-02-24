@@ -5,7 +5,7 @@ setup(
     name='passhole',
     version=version.__version__,
     packages=['passhole'],
-    package_data={'passhole':['blank.kdbx', 'wordlist.10000']},
+    package_data={'passhole':['blank.kdbx', 'wordlist.txt']},
     author="Evan Widloski",
     author_email="evan@evanw.org",
     description="CLI KeePass client with dmenu support",
