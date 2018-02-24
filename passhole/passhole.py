@@ -241,6 +241,9 @@ def type_entries(args):
 
     # type out password
     k = PyKeyboard()
+    if not selected_entry:
+        log.warning("Selected entry is empty, did %s fail?" % args.prog)
+        return()
     if args.tabbed:
         if selected_entry.username:
             k.type_string(selected_entry.username)
@@ -288,6 +291,13 @@ def list_entries(args):
         branch_corner = "└── " if show_branches else ""
         branch_tee = "├── " if show_branches else ""
         branch_pipe = "│   " if show_branches else ""
+
+        # empty titles cause crash
+        for i in range(len(group.entries)):
+            title = group.entries[i].title
+            if not title:
+                group.entries[i].title = "!!!empty title!!!"
+
         entries = sorted(group.entries, key=lambda x: x.title)
         for entry in entries:
             if entry == entries[-1] and len(group.subgroups) == 0:
