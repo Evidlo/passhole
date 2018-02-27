@@ -100,7 +100,9 @@ Example i3 Keybindings
 Troubleshooting GPG Keys
 ------------------------
 
-`passhole` uses `gpg` to store your database password encrypted on disk to take advantage of the password caching features of `gpg-agent`.  By default `passhole` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using `gpg2`.  If you created your key with `gpg`, you can export your keys to `gpg2` `like this`_.
+``passhole`` uses ``gpg`` to store your database password encrypted on disk to take advantage of the password caching features of ``gpg-agent``.  By default ``passhole`` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using ``gpg2``.  If you created your key with ``gpg``, you can export your keys to ``gpg2`` as shown below.
 
-.. _like this: https://superuser.com/questions/1098768/synchronize-gnupg-1-4-and-gnupg-2-1-keychains 
+.. code:: bash
 
+   gpg --export | gpg2 --import
+   gpg --export-secret-keys | gpg2 --import

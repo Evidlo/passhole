@@ -65,10 +65,10 @@ OPTIONAL ARGS
 
 Files
 -----
-~/passhole.kdbx
+~/.passhole.kdbx
     Default location of KeePass database. Override with ``--database PATH``
 
-~/passhole.key
+~/.passhole.key
     Default location KeePass key.  Override with ``--keyfile PATH`` and disable with ``--nokeyfile``.
 
 ~/.cache/passhole_cache

@@ -223,7 +223,7 @@ def open_database(args):
 def type_entries(args):
     kp = open_database(args)
 
-    entry_paths = [entry.path for entry in kp.entries]
+    entry_paths = [entry.path for entry in kp.entries if entry.title]
     items = '\n'.join(sorted(entry_paths))
 
     # get the entry from dmenu
@@ -233,9 +233,14 @@ def type_entries(args):
 
     # if nothing was selected, return None
     if not selection_path:
-        return None
+        log.warning("No path returned by {}".format(args.prog))
+        return
 
     selected_entry = kp.find_entries(path=selection_path, first=True)
+
+    if not selected_entry:
+        log.warning("No such entry {}".format(selection_path))
+        return
 
     log.debug("selected_entry:{}".format(selected_entry))
 
@@ -288,19 +293,19 @@ def list_entries(args):
         branch_corner = "└── " if show_branches else ""
         branch_tee = "├── " if show_branches else ""
         branch_pipe = "│   " if show_branches else ""
-        entries = sorted(group.entries, key=lambda x: x.title)
+        entries = sorted(group.entries, key=lambda x: str(x.title))
         for entry in entries:
             if entry == entries[-1] and len(group.subgroups) == 0:
-                print(prefix + branch_corner + entry.title)
+                print(prefix + branch_corner + str(entry.title))
             else:
-                print(prefix + branch_tee + entry.title)
+                print(prefix + branch_tee + str(entry.title))
         groups = sorted(group.subgroups, key=lambda x: x.__str__())
         for group in groups:
             if group == groups[-1]:
-                print(prefix + branch_corner + blue(bold("[{0}]")).format(group.name))
+                print(prefix + branch_corner + blue(bold(str(group.name))))
                 list_items(group, prefix + "    ")
             else:
-                print(prefix + branch_tee + blue(bold("[{0}]")).format(group.name))
+                print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
     list_items(kp.root_group, "", show_branches=False)
