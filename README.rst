@@ -18,10 +18,10 @@ Passhole
 Features
 ------------
 
-- add existing passwords
+- add, delete, move, rename entries and groups
 - generate `correct horse battery staple`_ style passwords
 - generate alphanumeric passwords
-- temporarily caches database password for 10 minutes
+- temporarily cache database password for 10 minutes
 - autofill selected forms via keyboard shortcut (using the ``type`` command)
 
 .. _correct horse battery staple: http://xkcd.com/936
@@ -100,9 +100,19 @@ Example i3 Keybindings
 Troubleshooting GPG Keys
 ------------------------
 
-``passhole`` uses ``gpg`` to store your database password encrypted on disk to take advantage of the password caching features of ``gpg-agent``.  By default ``passhole`` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using ``gpg2``.  If you created your key with ``gpg``, you can export your keys to ``gpg2`` as shown below.
+``passhole`` uses ``gpg2`` to store your database password encrypted on disk to take advantage of the password caching features of ``gpg-agent``.  By default ``passhole`` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using ``gpg2``.  If you created your key with ``gpg``, you can export your keys to ``gpg2`` as shown below.
 
 .. code:: bash
 
    gpg --export | gpg2 --import
    gpg --export-secret-keys | gpg2 --import
+
+See also
+--------
+- `keepmenu`_
+- `kpcli`_
+- `keepassxc`_
+
+.. _keepmenu: https://github.com/firecat53/keepmenu/
+.. _kpcli: http://kpcli.sourceforge.net/
+.. _keepassxc: https://keepassxc.org/
