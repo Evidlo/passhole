@@ -280,6 +280,8 @@ def show(args):
             print(green("Password: ") +
                     Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
             print(green("URL: ") + (entry.url or ''))
+            for field_name, field_value in entry.custom_properties.items():
+                print(green("{}: ".format(field_name)) + str(field_value or ''))
     else:
         log.error(red("No such entry ") + bold(args.entry_path))
 
