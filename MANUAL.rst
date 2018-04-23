@@ -9,8 +9,8 @@ COMMANDS
 show [-h] [--field FIELD] PATH
     Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``--field FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
 
-type [-h] [--tabbed] PROG
-    Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
+type [-h] [--tabbed] [--username] PROG
+    Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Use the ``--username`` option to show entry username in parenthesis during selection.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
   
 add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] PATH
     Add a new entry/group to the database, where ``PATH`` is the full path to the group or entry.  Use ``-w``, ``-a``, or ``-s`` to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  ``LENGTH`` defaults to 5 words for ``-w`` and 32 characters for ``-a`` and ``-s`` unless otherwise specified.
@@ -24,8 +24,8 @@ remove [-h] PATH
 move [-h] SRC_PATH DEST_PATH
     Move an entry/group to another path, where ``SRC_PATH`` and ``DEST_PATH`` are the full paths to the source and destination items.  Providing two entry paths or two group paths will move and rename the group or entry.
 
-list [-h]
-    List entries/groups in the database.
+list [-h] [--username]
+    List entries/groups in the database.  Use the ``--username`` option to show entry username in addition to title.
 
 grep [-h] [-i] [--field FIELD] PATTERN
     List entries which match a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``--field FIELD`` option to limit search to a specific KeePass string field, where ``FIELD`` is one of ``title``, ``username``, ``password``, or ``url``.  Use the ``-i`` option to enable case insensitive searching.
@@ -46,7 +46,7 @@ OPTIONAL ARGS
 \-\-cache PATH
   Specify location to cache password with gpg-agent, where ``PATH`` is a location on the filesystem. Defaults to ``~/.cache/passhole_cache``   
   
-\-\-nocache
+\-\-no-cache
   Disable password caching with gpg-agent and prompt for the password every time.                                                                        
                                                                                                    
 \-\-gpgkey FINGERPRINT
@@ -54,8 +54,12 @@ OPTIONAL ARGS
   
 \-\-keyfile PATH
   Specify the path to the keyfile when initializing, accessing or modifying the database. Defaults to ``~/.passhole.key``                                    
-\-\-nokeyfile
+
+\-\-no-keyfile
   Don't use a keyfile when accessing or modifying the database.
+
+\-\-no-password
+  Don't prompt for a password when accessing or modifying the database
                                                                                                    
 \-\-database PATH
   Specify the path to the KeePass database when initializing, accessing or modifying the database. Defaults to ``~/.passhole.kdbx``                     
@@ -69,10 +73,10 @@ Files
     Default location of KeePass database. Override with ``--database PATH``
 
 ~/.passhole.key
-    Default location KeePass key.  Override with ``--keyfile PATH`` and disable with ``--nokeyfile``.
+    Default location KeePass key.  Override with ``--keyfile PATH`` and disable with ``--no-keyfile``.
 
 ~/.cache/passhole_cache
-    Default location where gpg agent temporarily caches the database password.  Override with ``--cache`` and disable with ``--nocache``. 
+    Default location where gpg agent temporarily caches the database password.  Override with ``--cache`` and disable with ``--no-cache``. 
                                                                                                    
 
 Examples

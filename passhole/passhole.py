@@ -100,7 +100,7 @@ def init_database(args):
         kp.set_credentials(password=password, keyfile=keyfile)
         kp.save()
         # create password cache
-        if password and not args.nocache:
+        if password and not args.no_cache:
             create_password_cache(args.cache, password, args.gpgkey)
 
     # quit if database already exists
@@ -127,7 +127,7 @@ def create_password_cache(cache, password, fingerprint):
     else:
         log.error(red("no GPG keys found. Try ") +
                   bold("gpg2 --gen-key") + red(" or use the ") +
-                  bold("--nocache") + red(" option"))
+                  bold("--no-cache") + red(" option"))
         sys.exit()
 
     # encrypt password and write to cache file
@@ -154,7 +154,7 @@ def open_database(args):
         log.error(red("No database found at ") + bold(args.database) +  red(".  Run ") +  bold("ph init"))
         sys.exit()
     # check if keyfile exists, try to use default keyfile
-    if args.nokeyfile:
+    if args.no_keyfile:
         keyfile = None
     else:
         if not args.keyfile:
@@ -169,50 +169,53 @@ def open_database(args):
                 log.error(red("No keyfile found at ") + bold(args.keyfile))
                 sys.exit()
 
-    # retrieve password from cache
-    if os.path.exists(os.path.expanduser(args.cache)) and not args.nocache:
-        log.debug("Retrieving password from {}".format(args.cache))
-        outfile = BytesIO()
-        with open(args.cache, 'rb') as infile:
-            try:
-                gpg.decrypt(infile, outfile)
-            except gpgme.GpgmeError as e:
-                if e.code == gpgme.ERR_DECRYPT_FAILED:
-                    log.error(red("Could not decrypt cache"))
-                    sys.exit()
-                else:
-                    raise e
-
-        password = outfile.getvalue().decode('utf8')
-        outfile.close()
-    # if no cache, prompt for password and save it to cache
+    if args.no_password:
+        password = None
     else:
-        # check if running in interactive shell
-        if os.isatty(sys.stdout.fileno()):
-            password = getpass('Enter password: ')
-        # otherwise use zenity
-        else:
-            NULL = open(os.devnull, 'w')
-            p = Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
-                      stdin=PIPE,
-                      stdout=PIPE,
-                      stderr=NULL,
-                      close_fds=True)
-            password = p.communicate()[0].decode('utf-8').rstrip('\n')
+        # retrieve password from cache
+        if os.path.exists(os.path.expanduser(args.cache)) and not args.no_cache:
+            log.debug("Retrieving password from {}".format(args.cache))
+            outfile = BytesIO()
+            with open(args.cache, 'rb') as infile:
+                try:
+                    gpg.decrypt(infile, outfile)
+                except gpgme.GpgmeError as e:
+                    if e.code == gpgme.ERR_DECRYPT_FAILED:
+                        log.error(red("Could not decrypt cache"))
+                        sys.exit()
+                    else:
+                        raise e
 
-        if password:
-            if not args.nocache:
-                create_password_cache(args.cache, password, args.gpgkey)
+            password = outfile.getvalue().decode('utf8')
+            outfile.close()
+        # if no cache, prompt for password and save it to cache
         else:
-            log.error(red("No password given"))
-            sys.exit()
+            # check if running in interactive shell
+            if os.isatty(sys.stdout.fileno()):
+                password = getpass('Enter password: ')
+            # otherwise use zenity
+            else:
+                NULL = open(os.devnull, 'w')
+                p = Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
+                        stdin=PIPE,
+                        stdout=PIPE,
+                        stderr=NULL,
+                        close_fds=True)
+                password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-    log.debug("opening {} with password:{} and keyfile:{}".format(args.database, password, keyfile))
+            if password:
+                if not args.no_cache:
+                    create_password_cache(args.cache, password, args.gpgkey)
+            else:
+                log.error(red("No password given"))
+                sys.exit()
+
+    log.debug("opening {} with password:{} and keyfile:{}".format(args.database, str(password), str(keyfile)))
     try:
         kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
         log.error(red("Password or keyfile incorrect"))
-        if os.path.exists(os.path.expanduser(args.cache)) and not args.nocache:
+        if os.path.exists(os.path.expanduser(args.cache)) and not args.no_cache:
             log.error(red("Try clearing the cache at ") + bold(args.cache))
         sys.exit()
     return kp
@@ -224,7 +227,14 @@ def type_entries(args):
     kp = open_database(args)
 
     entry_paths = [entry.path for entry in kp.entries if entry.title]
-    items = '\n'.join(sorted(entry_paths))
+    entry_texts = []
+    for entry in kp.entries:
+        if args.username:
+            entry_texts.append("{} ({})".format(str(entry.path), str(entry.username)))
+        else:
+            entry_texts.append("{}".format(str(entry.path)))
+
+    items = '\n'.join(sorted(entry_texts))
 
     # get the entry from dmenu
     p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT, shell=True)
@@ -297,10 +307,15 @@ def list_entries(args):
         branch_pipe = "│   " if show_branches else ""
         entries = sorted(group.entries, key=lambda x: str(x.title))
         for entry in entries:
-            if entry == entries[-1] and len(group.subgroups) == 0:
-                print(prefix + branch_corner + str(entry.title))
+            if args.username:
+                entry_string = "{} ({})".format(str(entry.title), str(entry.username))
             else:
-                print(prefix + branch_tee + str(entry.title))
+                entry_string = "{}".format(str(entry.title))
+
+            if entry == entries[-1] and len(group.subgroups) == 0:
+                print(prefix + branch_corner + entry_string)
+            else:
+                print(prefix + branch_tee + entry_string)
         groups = sorted(group.subgroups, key=lambda x: x.__str__())
         for group in groups:
             if group == groups[-1]:
@@ -497,6 +512,7 @@ def main():
     type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
     type_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
+    type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
     type_parser.set_defaults(func=type_entries)
 
     # process args for `add` command
@@ -520,6 +536,7 @@ def main():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
+    list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
     # process args for `grep` command
@@ -536,10 +553,11 @@ def main():
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--cache', metavar='PATH', type=str, default=passhole_cache, help="specify password cache")
-    parser.add_argument('--nocache', action='store_true', default=False, help="don't cache database password")
+    parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache database password")
     parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
-    parser.add_argument('--nokeyfile', action='store_true', default=False, help="don't look for a database keyfile or create one")
+    parser.add_argument('--no-keyfile', action='store_true', default=False, help="don't look for a database keyfile or create one")
+    parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="specify database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
