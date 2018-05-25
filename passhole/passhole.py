@@ -305,6 +305,8 @@ def list_entries(args):
         branch_corner = "└── " if show_branches else ""
         branch_tee = "├── " if show_branches else ""
         branch_pipe = "│   " if show_branches else ""
+        branch_blank = "    " if show_branches else ""
+        # branch_corner = branch_tee = branch_pipe = "    " if show_branches else ""
         entries = sorted(group.entries, key=lambda x: str(x.title))
         for entry in entries:
             if args.username:
@@ -320,7 +322,7 @@ def list_entries(args):
         for group in groups:
             if group == groups[-1]:
                 print(prefix + branch_corner + blue(bold(str(group.name))))
-                list_items(group, prefix + "    ")
+                list_items(group, prefix + branch_blank)
             else:
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
