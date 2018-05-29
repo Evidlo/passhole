@@ -183,6 +183,12 @@ def open_database(args):
                     if e.code == gpgme.ERR_DECRYPT_FAILED:
                         log.error(red("Could not decrypt cache"))
                         sys.exit()
+                    elif e.code == gpgme.ERR_NO_SECKEY:
+                        log.error(red("No GPG secret key found.  Please generate a keypair using ") +
+                                  bold("gpg2 --full-generate-key"))
+                        sys.exit()
+                    elif e.code == gpgme.ERR_CANCELED:
+                        sys.exit()
                     else:
                         raise e
 
