@@ -9,7 +9,7 @@ from builtins import input
 from .version import __version__
 from pykeepass.pykeepass import PyKeePass
 from subprocess import Popen, PIPE, STDOUT
-from pykeyboard import PyKeyboard
+from pynput.keyboard import Controller, Key
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
@@ -261,15 +261,16 @@ def type_entries(args):
     log.debug("selected_entry:{}".format(selected_entry))
 
     # type out password
-    k = PyKeyboard()
+    k = Controller()
     if args.tabbed:
         if selected_entry.username:
-            k.type_string(selected_entry.username)
-            k.tap_key(k.tab_key)
+            k.type(selected_entry.username)
+            k.press(Key.tab)
+            k.release(Key.tab)
         else:
             log.warning("Selected entry does not have a username")
     if selected_entry.password:
-        k.type_string(selected_entry.password)
+        k.type(selected_entry.password)
     else:
         log.warning("Selected entry does not have a password")
 
