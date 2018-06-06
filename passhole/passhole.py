@@ -41,7 +41,12 @@ template_database_file = os.path.join(base_dir, 'blank.kdbx')
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
-string_fields = {'username':'UserName', 'url':'URL', 'password':'Password', 'notes':'Notes'}
+string_fields = {
+    'username':'UserName',
+    'url':'URL',
+    'password':'Password',
+    'notes':'Notes'
+}
 
 gpg = gpgme.Context()
 
@@ -55,8 +60,8 @@ def bold(text):
     return Style.BRIGHT + text + Style.NORMAL
 
 
-# create database
 def init_database(args):
+    """Create database"""
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
@@ -109,8 +114,9 @@ def init_database(args):
         sys.exit()
 
 
-# cache database password to a gpg encrypted file
 def create_password_cache(cache, password, fingerprint):
+    """Cache database password to a gpg encrypted file"""
+
     # get GPG key for creating cache
     keys = list(gpg.keylist())
     if keys:
@@ -124,6 +130,7 @@ def create_password_cache(cache, password, fingerprint):
         # otherwise get the first key
         else:
             selected_key = keys[0]
+
     else:
         log.error(red("no GPG keys found. Try ") +
                   bold("gpg2 --gen-key") + red(" or use the ") +
@@ -138,7 +145,13 @@ def create_password_cache(cache, password, fingerprint):
     except gpgme.GpgmeError as e:
         # gpgkey is not trusted
         if e.code == gpgme.ERR_UNUSABLE_PUBKEY:
-            log.error(red("Your GPG key is untrusted.  Run " + bold("gpg2 --edit-key \"{}\" trust".format(selected_key.uids[0].name)) + red(" to change the trust level")))
+            log.error(
+                red(
+                    "Your GPG key is untrusted.  Run " +
+                    bold("gpg2 --edit-key \"{}\" trust".format(selected_key.uids[0].name)) +
+                    red(" to change the trust level")
+                )
+            )
             os.remove(cache)
             sys.exit()
         else:
@@ -147,12 +160,19 @@ def create_password_cache(cache, password, fingerprint):
     infile.close()
 
 
-# load database
 def open_database(args):
+    """Load database"""
+
     # check if database exists
     if not os.path.exists(args.database):
-        log.error(red("No database found at ") + bold(args.database) +  red(".  Run ") +  bold("ph init"))
+        log.error(
+            red("No database found at ") +
+            bold(args.database) +
+            red(".  Run ") +
+            bold("ph init")
+        )
         sys.exit()
+
     # check if keyfile exists, try to use default keyfile
     if args.no_keyfile:
         keyfile = None
@@ -184,8 +204,10 @@ def open_database(args):
                         log.error(red("Could not decrypt cache"))
                         sys.exit()
                     elif e.code == gpgme.ERR_NO_SECKEY:
-                        log.error(red("No GPG secret key found.  Please generate a keypair using ") +
-                                  bold("gpg2 --full-generate-key"))
+                        log.error(
+                            red("No GPG secret key found.  Please generate a keypair using ") +
+                            bold("gpg2 --full-generate-key")
+                        )
                         sys.exit()
                     elif e.code == gpgme.ERR_CANCELED:
                         sys.exit()
@@ -194,20 +216,24 @@ def open_database(args):
 
             password = outfile.getvalue().decode('utf8')
             outfile.close()
+
         # if no cache, prompt for password and save it to cache
         else:
             # check if running in interactive shell
             if os.isatty(sys.stdout.fileno()):
                 password = getpass('Enter password: ')
+
             # otherwise use zenity
             else:
                 NULL = open(os.devnull, 'w')
                 try:
-                    p = subprocess.Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.NULL,
-                            close_fds=True)
+                    p = subprocess.Popen(
+                        ["zenity", "--entry", "--hide-text", "--text='Enter password'"],
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.NULL,
+                        close_fds=True
+                    )
                 except FileNotFoundError:
                     log.error(bold("zenity ") + red("not found."))
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
@@ -215,11 +241,16 @@ def open_database(args):
             if password:
                 if not args.no_cache:
                     create_password_cache(args.cache, password, args.gpgkey)
+
             else:
                 log.error(red("No password given"))
                 sys.exit()
 
-    log.debug("opening {} with password:{} and keyfile:{}".format(args.database, str(password), str(keyfile)))
+    log.debug("opening {} with password:{} and keyfile:{}".format(
+        args.database,
+        str(password),
+        str(keyfile)
+    ))
     try:
         kp = PyKeePass(args.database, password=password, keyfile=keyfile)
     except IOError:
@@ -230,9 +261,13 @@ def open_database(args):
     return kp
 
 
-# select an entry using `prog`, then type the password
-# if `tabbed` is True, type out username, TAB, password
 def type_entries(args):
+    """Type out password using keyboard
+
+    Selects an entry using `prog`, then sends the password to the keyboard.
+    If `tabbed` is true, both the username and password are typed, separated
+    by a tab"""
+
     kp = open_database(args)
 
     entry_paths = [entry.path for entry in kp.entries if entry.title]
@@ -247,7 +282,12 @@ def type_entries(args):
 
     # get the entry from dmenu
     try:
-        p = subprocess.Popen(args.prog.split(' '), stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(
+            args.prog.split(' '),
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        )
     except FileNotFoundError:
         log.error(bold(args.prog[0]) + red(" not found."))
         sys.exit()
@@ -295,8 +335,9 @@ def type_entries(args):
         log.warning("Selected entry does not have a password")
 
 
-# print out the contents of an entry
 def show(args):
+    """Print out the contents of an entry to console"""
+
     kp = open_database(args)
 
     entry = kp.find_entries(path=args.entry_path, first=True)
@@ -310,21 +351,27 @@ def show(args):
                 print(entry._get_string_field(args.field), end='')
             else:
                 log.error(red("Invalid field ") + bold(args.field.lower()))
+
         # otherwise, show all fields
         else:
             print(green("Title: ") + (entry.title or ''))
             print(green("Username: ") + (entry.username or ''))
-            print(green("Password: ") +
-                    Fore.RED + Back.RED + (entry.password or '') + Fore.RESET + Back.RESET)
+            print(
+                green("Password: ") + Fore.RED + Back.RED +
+                (entry.password or '') +
+                Fore.RESET + Back.RESET
+            )
             print(green("URL: ") + (entry.url or ''))
             for field_name, field_value in entry.custom_properties.items():
                 print(green("{}: ".format(field_name)) + str(field_value or ''))
+
     else:
         log.error(red("No such entry ") + bold(args.entry_path))
 
 
-# list entries as a tree
 def list_entries(args):
+    """List Entries/Groups in the database as a tree"""
+
     kp = open_database(args)
 
     # recursive function to list items in a group
@@ -333,8 +380,8 @@ def list_entries(args):
         branch_tee = "├── " if show_branches else ""
         branch_pipe = "│   " if show_branches else ""
         branch_blank = "    " if show_branches else ""
-        # branch_corner = branch_tee = branch_pipe = "    " if show_branches else ""
         entries = sorted(group.entries, key=lambda x: str(x.title))
+
         for entry in entries:
             if args.username:
                 entry_string = "{} ({})".format(str(entry.title), str(entry.username))
@@ -345,7 +392,9 @@ def list_entries(args):
                 print(prefix + branch_corner + entry_string)
             else:
                 print(prefix + branch_tee + entry_string)
+
         groups = sorted(group.subgroups, key=lambda x: x.__str__())
+
         for group in groups:
             if group == groups[-1]:
                 print(prefix + branch_corner + blue(bold(str(group.name))))
@@ -357,12 +406,14 @@ def list_entries(args):
     list_items(kp.root_group, "", show_branches=False)
 
 
-# search all string fields for a string
 def grep(args):
+    """Search all string fields for a string"""
+
     kp = open_database(args)
 
     flags = 'i' if args.i else None
     log.debug("Searching database for pattern: {}".format(args.pattern))
+
     # handle lowercase field input gracefully
     if args.field and args.field in string_fields.keys():
         args.field = string_fields[args.field]
@@ -373,8 +424,9 @@ def grep(args):
         print(entry.path)
 
 
-# process path into parent group and child item
 def decompose_path(path):
+    """Process path into parent group and child item"""
+
     if '/' in path.strip('/'):
         [group_path, child_name] = path.strip('/').rsplit('/', 1)
     else:
@@ -385,8 +437,9 @@ def decompose_path(path):
     return [group_path + '/', child_name]
 
 
-# create new entry/group
 def add(args):
+    """Create new entry/group"""
+
     kp = open_database(args)
 
     [group_path, child_name] = decompose_path(args.path)
@@ -443,8 +496,9 @@ def add(args):
     kp.save()
 
 
-# remove an entry/group
 def remove(args):
+    """Remove an Entry/Group"""
+
     kp = open_database(args)
 
     # remove a group
@@ -468,8 +522,9 @@ def remove(args):
     kp.save()
 
 
-# move an entry/group
 def move(args):
+    """Move an Entry/Group"""
+
     kp = open_database(args)
 
     [group_path, child_name] = decompose_path(args.dest_path)
