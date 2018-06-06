@@ -8,7 +8,7 @@ from __future__ import print_function
 from builtins import input
 from .version import __version__
 from pykeepass.pykeepass import PyKeePass
-from subprocess import Popen, PIPE, STDOUT
+import subprocess
 from pynput.keyboard import Controller, Key
 from getpass import getpass
 from colorama import Fore, Back, Style
@@ -202,11 +202,14 @@ def open_database(args):
             # otherwise use zenity
             else:
                 NULL = open(os.devnull, 'w')
-                p = Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
-                        stdin=PIPE,
-                        stdout=PIPE,
-                        stderr=NULL,
-                        close_fds=True)
+                try:
+                    p = subprocess.Popen(["zenity", "--entry", "--hide-text", "--text='Enter password'"],
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.NULL,
+                            close_fds=True)
+                except FileNotFoundError:
+                    log.error(bold("zenity ") + red("not found."))
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
             if password:
@@ -243,7 +246,11 @@ def type_entries(args):
     items = '\n'.join(sorted(entry_texts))
 
     # get the entry from dmenu
-    p = Popen(args.prog, stdout=PIPE, stdin=PIPE, stderr=STDOUT, shell=True)
+    try:
+        p = subprocess.Popen(args.prog.split(' '), stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except FileNotFoundError:
+        log.error(bold(args.prog[0]) + red(" not found."))
+        sys.exit()
     stdout = p.communicate(input=items.encode('utf-8'))[0].decode('utf-8')
     selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
 
@@ -260,17 +267,30 @@ def type_entries(args):
 
     log.debug("selected_entry:{}".format(selected_entry))
 
+    def call_xdotool(args):
+        try:
+            subprocess.call(["xdotool"] + args)
+        except FileNotFoundError:
+            log.error(bold("xdotool ") + red("not found"))
+
     # type out password
     k = Controller()
     if args.tabbed:
         if selected_entry.username:
-            k.type(selected_entry.username)
-            k.press(Key.tab)
-            k.release(Key.tab)
+            if args.xdotool:
+                call_xdotool(['type', selected_entry.username])
+                call_xdotool(['key', 'Tab'])
+            else:
+                k.type(selected_entry.username)
+                k.press(Key.tab)
+                k.release(Key.tab)
         else:
             log.warning("Selected entry does not have a username")
     if selected_entry.password:
-        k.type(selected_entry.password)
+        if args.xdotool:
+            call_xdotool(['type', selected_entry.password])
+        else:
+            k.type(selected_entry.password)
     else:
         log.warning("Selected entry does not have a password")
 
@@ -521,6 +541,7 @@ def main():
     type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
     type_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
+    type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
     type_parser.set_defaults(func=type_entries)
 
