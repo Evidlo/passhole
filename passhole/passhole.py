@@ -7,7 +7,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 from builtins import input
 from .version import __version__
-from pykeepass.pykeepass import PyKeePass
 import subprocess
 from pykeyboard import PyKeyboard
 from getpass import getpass
@@ -21,7 +20,6 @@ import sys
 import shutil
 import logging
 import argparse
-import readline
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -62,6 +60,7 @@ def bold(text):
 
 def init_database(args):
     """Create database"""
+    from pykeepass.pykeepass import PyKeePass
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
@@ -162,6 +161,7 @@ def create_password_cache(cache, password, fingerprint):
 
 def open_database(args):
     """Load database"""
+    from pykeepass.pykeepass import PyKeePass
 
     # check if database exists
     if not os.path.exists(args.database):
