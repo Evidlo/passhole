@@ -9,7 +9,7 @@ from builtins import input
 from .version import __version__
 from pykeepass.pykeepass import PyKeePass
 import subprocess
-from pynput.keyboard import Controller, Key
+from pykeyboard import PyKeyboard
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
@@ -314,23 +314,22 @@ def type_entries(args):
             log.error(bold("xdotool ") + red("not found"))
 
     # type out password
-    k = Controller()
+    k = PyKeyboard()
     if args.tabbed:
         if selected_entry.username:
             if args.xdotool:
                 call_xdotool(['type', selected_entry.username])
                 call_xdotool(['key', 'Tab'])
             else:
-                k.type(selected_entry.username)
-                k.press(Key.tab)
-                k.release(Key.tab)
+                k.type_string(selected_entry.username)
+                k.tap_key(k.tab_key)
         else:
             log.warning("Selected entry does not have a username")
     if selected_entry.password:
         if args.xdotool:
             call_xdotool(['type', selected_entry.password])
         else:
-            k.type(selected_entry.password)
+            k.type_string(selected_entry.password)
     else:
         log.warning("Selected entry does not have a password")
 

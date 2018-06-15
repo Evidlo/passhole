@@ -17,7 +17,7 @@ setup(
         'console_scripts': ['passhole = passhole.passhole:main', 'ph = passhole.passhole:main']
     },
     install_requires=[
-        "pynput",
+        "PyUserInput",
         "pykeepass",
         "colorama",
         "pygpgme",
