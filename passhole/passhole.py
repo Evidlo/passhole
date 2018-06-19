@@ -131,9 +131,10 @@ def create_password_cache(cache, password, fingerprint):
             selected_key = keys[0]
 
     else:
-        log.error(red("no GPG keys found. Try ") +
-                  bold("gpg2 --gen-key") + red(" or use the ") +
-                  bold("--no-cache") + red(" option"))
+        log.error(
+            red("no GPG keys found. Try ") +
+            bold("gpg2 --gen-key") + red(" or use the ") +
+            bold("--no-cache") + red(" option"))
         sys.exit()
 
     # encrypt password and write to cache file
@@ -469,7 +470,7 @@ def add(args):
             with open(wordlist_file, 'r') as f:
                 wordlist = f.read().splitlines()
                 selected = rng.sample(wordlist, args.words)
-            password = '.'.join(selected)
+            password = ' '.join(selected)
 
         # generate alphanumeric password
         elif args.alphanumeric:
@@ -575,7 +576,9 @@ def move(args):
     kp.save()
 
 
-def main():
+def create_parser():
+    """Create argparse object"""
+
     parser = argparse.ArgumentParser(description="Append -h to any command to view its syntax.")
     parser._positionals.title = "commands"
 
@@ -645,6 +648,12 @@ def main():
     parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="specify database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
+    return parser
+
+
+def main():
+
+    parser = create_parser()
     args = parser.parse_args()
 
     if args.debug:
