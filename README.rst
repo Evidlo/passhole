@@ -5,7 +5,7 @@ Passhole
 
 .. _pass: https://www.passwordstore.org
 
-.. image:: https://i.imgur.com/U7q5jxJ.gif
+.. image:: https://i.imgur.com/lWLgbo3.gif 
 
 - `Features`_
 - `Setup`_
