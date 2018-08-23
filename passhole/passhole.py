@@ -101,7 +101,8 @@ def init_database(args):
 
         # create database
         kp = PyKeePass(args.database, password='password')
-        kp.set_credentials(password=password, keyfile=keyfile)
+        kp.password = password
+        kp.keyfile = keyfile
         kp.save()
         # create password cache
         if password and not args.no_cache:
@@ -586,7 +587,7 @@ def create_parser():
     subparsers.dest = 'command'
     subparsers.required = True
 
-    path_help = 'path to entry (e.g. \'foo\') or group (e.g. \'foo/\')'
+    path_help = "entry path (e.g. \'foo\') or group path (e.g. 'foo/')"
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
