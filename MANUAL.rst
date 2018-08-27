@@ -28,12 +28,15 @@ list [-h] [--username]
     List entries/groups in the database.  Use the ``--username`` option to show entry username in addition to title.
 
 grep [-h] [-i] [--field FIELD] PATTERN
-    List entries which match a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``--field FIELD`` option to limit search to a specific KeePass string field, where ``FIELD`` is one of ``title``, ``username``, ``password``, or ``url``.  Use the ``-i`` option to enable case insensitive searching.
+    List entries with titles matching a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``--field FIELD`` option to search other string fields, where ``FIELD`` is one of ``title``, ``username``, ``password``, ``url``, or a custom field key.  Use the ``-i`` option to enable case insensitive searching.
 
 .. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
 
 init [-h]
     Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See ``--database`` and ``--keyfile`` to initialize in a non-default location.
+
+dump [-h]
+    Pretty print database XML to console.  Passwords will appear in plaintext.
 
 
 OPTIONAL ARGS

@@ -43,7 +43,8 @@ string_fields = {
     'username':'UserName',
     'url':'URL',
     'password':'Password',
-    'notes':'Notes'
+    'notes':'Notes',
+    'title': 'Title'
 }
 
 gpg = gpgme.Context()
@@ -418,6 +419,8 @@ def grep(args):
     # handle lowercase field input gracefully
     if args.field and args.field in string_fields.keys():
         args.field = string_fields[args.field]
+    else:
+        args.field = 'Title'
 
     entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
 
@@ -577,6 +580,23 @@ def move(args):
     kp.save()
 
 
+def dump(args):
+    """Pretty print database XML to console"""
+
+    from lxml import etree
+
+    kp = open_database(args)
+
+    print(
+        etree.tostring(
+            kp.tree,
+            pretty_print=True,
+            standalone=True,
+            encoding='utf-8'
+        ).decode('utf-8')
+    )
+
+
 def create_parser():
     """Create argparse object"""
 
@@ -628,7 +648,7 @@ def create_parser():
     list_parser.set_defaults(func=list_entries)
 
     # process args for `grep` command
-    grep_parser = subparsers.add_parser('grep', help="list entries with fields matching regex pattern")
+    grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
     grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
     grep_parser.add_argument('--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
@@ -637,6 +657,10 @@ def create_parser():
     # process args for `init` command
     init_parser = subparsers.add_parser('init', help="initialize a new database")
     init_parser.set_defaults(func=init_database)
+
+    # process args for `dump` command
+    dump_parser = subparsers.add_parser('dump', help="pretty print database XML to console")
+    dump_parser.set_defaults(func=dump)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
