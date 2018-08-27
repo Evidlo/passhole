@@ -93,9 +93,9 @@ Example i3 Keybindings
 .. code:: bash
 
    # select entry using dmenu, then send password to keyboard
-   bindsym $mod+p exec ph type dmenu
+   bindsym $mod+p exec "ph type dmenu"
    # select entry using dmenu, then send username + password to keyboard
-   bindsym $mod+Shift+p exec ph type dmenu --tabbed
+   bindsym $mod+Shift+p exec "ph type dmenu --tabbed"
 
 Troubleshooting GPG Keys
 ------------------------
