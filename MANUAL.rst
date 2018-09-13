@@ -1,10 +1,24 @@
+=========
+passhole
+=========
+
+-------------------------------
+KeePass CLI and dmenu interface
+-------------------------------
+
+:Author: Evan Widloski
+:Date:   2018-09-12
+:Copyright: GPL-3.0
+:Version: 1.7.2
+:Manual group: password management
+
 SYNOPSIS
---------
+========
 
 **ph** [OPTIONAL ARGS] [COMMAND] [COMMAND OPTIONS] [COMMAND ARGS]
 
 COMMANDS
---------
+========
 
 show [-h] [--field FIELD] PATH
     Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``--field FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
@@ -40,7 +54,7 @@ dump [-h]
 
 
 OPTIONAL ARGS
--------------
+=============
 
 \-h, \-\-help
   Print out a help message and exit. Use in conjunction with a command for command-specific help.                                                                                                                                                   
@@ -51,10 +65,10 @@ OPTIONAL ARGS
   Specify location to cache password with gpg-agent, where ``PATH`` is a location on the filesystem. Defaults to ``~/.cache/passhole_cache``   
   
 \-\-no-cache
-  Disable password caching with gpg-agent and prompt for the password every time.                                                                        
+  Disable password caching and prompt for the password every time.                                                                        
                                                                                                    
 \-\-gpgkey FINGERPRINT
-  Specify GPG key to use when caching password, where ``FINGERPRINT`` is the fingerprint of the GPG key. ``passhole`` defaults to the first key in the    | keychain. Use ``gpg --list-keys --fingerprint`` to get a list of keys and their fingerprints.  
+  Specify GPG key to use when caching password, where ``FINGERPRINT`` is the fingerprint of the GPG key. ``passhole`` defaults to the first key in the keychain. Use ``gpg --list-keys --fingerprint`` to get a list of keys and their fingerprints.  
   
 \-\-keyfile PATH
   Specify the path to the keyfile when initializing, accessing or modifying the database. Defaults to ``~/.passhole.key``                                    
@@ -72,7 +86,7 @@ OPTIONAL ARGS
   Print out version information.                                               
 
 Files
------
+=====
 ~/.passhole.kdbx
     Default location of KeePass database. Override with ``--database PATH``
 
@@ -80,4 +94,4 @@ Files
     Default location KeePass key.  Override with ``--keyfile PATH`` and disable with ``--no-keyfile``.
 
 ~/.cache/passhole_cache
-    Default location where gpg agent temporarily caches the database password.  Override with ``--cache`` and disable with ``--no-cache``. 
+    Default location where gpg-agent temporarily caches the database password.  Override with ``--cache`` and disable with ``--no-cache``. 
