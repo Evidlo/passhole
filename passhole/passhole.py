@@ -607,7 +607,7 @@ def create_parser():
     subparsers.dest = 'command'
     subparsers.required = True
 
-    path_help = "entry path (e.g. \'foo\') or group path (e.g. 'foo/')"
+    path_help = "entry path (e.g. 'foo') or group path (e.g. 'foo/')"
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
@@ -650,7 +650,7 @@ def create_parser():
     # process args for `grep` command
     grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
     grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
-    grep_parser.add_argument('--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
+    grep_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
 

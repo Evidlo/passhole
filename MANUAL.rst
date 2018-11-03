@@ -20,8 +20,8 @@ SYNOPSIS
 COMMANDS
 ========
 
-show [-h] [--field FIELD] PATH
-    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``--field FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
+show [-h] [-f FIELD] PATH
+    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``-f FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
 
 type [-h] [--tabbed] [--username] [--xdotool] PROG
     Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Use the ``--username`` option to show entry username in parenthesis during selection.  Use the ``--xdotool`` option to use ``xdotool`` instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
@@ -41,8 +41,8 @@ move [-h] SRC_PATH DEST_PATH
 list [-h] [--username]
     List entries/groups in the database.  Use the ``--username`` option to show entry username in addition to title.
 
-grep [-h] [-i] [--field FIELD] PATTERN
-    List entries with titles matching a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``--field FIELD`` option to search other string fields, where ``FIELD`` is one of ``title``, ``username``, ``password``, ``url``, or a custom field key.  Use the ``-i`` option to enable case insensitive searching.
+grep [-h] [-i] [-f FIELD] PATTERN
+    List entries with titles matching a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``-f FIELD`` option to search other string fields, where ``FIELD`` is one of ``title``, ``username``, ``password``, ``url``, or a custom field key.  Use the ``-i`` option to enable case insensitive searching.
 
 .. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
 
