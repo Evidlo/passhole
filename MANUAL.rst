@@ -9,7 +9,7 @@ KeePass CLI and dmenu interface
 :Author: Evan Widloski
 :Date:   2018-09-12
 :Copyright: GPL-3.0
-:Version: 1.7.2
+:Version: 1.7.3
 :Manual group: password management
 
 SYNOPSIS
