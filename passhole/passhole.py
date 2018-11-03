@@ -8,7 +8,7 @@ from __future__ import print_function
 from builtins import input
 from .version import __version__
 import subprocess
-from pykeyboard import PyKeyboard
+from pynput.keyboard import Controller, Key
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
@@ -317,22 +317,23 @@ def type_entries(args):
             log.error(bold("xdotool ") + red("not found"))
 
     # type out password
-    k = PyKeyboard()
+    k = Controller()
     if args.tabbed:
         if selected_entry.username:
             if args.xdotool:
                 call_xdotool(['type', selected_entry.username])
                 call_xdotool(['key', 'Tab'])
             else:
-                k.type_string(selected_entry.username)
-                k.tap_key(k.tab_key)
+                k.type(selected_entry.username)
+                k.press(Key.tab)
+                k.release(Key.tab)
         else:
             log.warning("Selected entry does not have a username")
     if selected_entry.password:
         if args.xdotool:
             call_xdotool(['type', selected_entry.password])
         else:
-            k.type_string(selected_entry.password)
+            k.type(selected_entry.password)
     else:
         log.warning("Selected entry does not have a password")
 

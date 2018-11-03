@@ -38,6 +38,8 @@ Setup
    pip install passhole
    ph init
 
+`libgpgme-dev` must also be installed.
+
 Example Usage
 --------------
 
