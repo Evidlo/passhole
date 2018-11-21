@@ -13,6 +13,7 @@ from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
+import readline
 import gpgme
 import random
 import os
@@ -49,6 +50,7 @@ string_fields = {
 
 gpg = gpgme.Context()
 
+# convenience functions for colored prompts
 def red(text):
     return Fore.RED + text + Fore.RESET
 def green(text):
@@ -57,6 +59,15 @@ def blue(text):
     return Fore.BLUE + text + Fore.RESET
 def bold(text):
     return Style.BRIGHT + text + Style.NORMAL
+
+def editable_input(prompt, prefill=None):
+    def hook():
+        readline.insert_text(prefill)
+        readline.redisplay()
+    readline.set_pre_input_hook(hook)
+    result = input(prompt)
+    readline.set_pre_input_hook()
+    return result
 
 
 def init_database(args):
@@ -76,7 +87,7 @@ def init_database(args):
         print("Creating database at {}".format(bold(args.database)))
         shutil.copy(template_database_file, args.database)
 
-        use_keyfile = input("Would you like to generate a keyfile? (Y/n): ")
+        use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
         # dont use a keyfile
         if use_keyfile == 'n':
             keyfile = None
@@ -500,7 +511,7 @@ def add(args):
 
     # create a new entry
     else:
-        username = input(green('Username: '))
+        username = editable_input(green('Username: '))
 
         # use urandom for number generation
         rng = random.SystemRandom()
@@ -533,7 +544,7 @@ def add(args):
         if args.append:
             password += args.append
 
-        url = input(green('URL: '))
+        url = editable_input(green('URL: '))
         kp.add_entry(parent_group, child_name, username, password, url=url)
 
     kp.save()
@@ -563,6 +574,45 @@ def remove(args):
             sys.exit()
 
     kp.save()
+
+
+def edit(args):
+    """Edit fields of an Entry"""
+
+    kp = open_database(**vars(args))
+
+    entry = kp.find_entries(path=args.entry_path, first=True)
+
+    if entry is not None:
+        # edit specific field
+        if args.field:
+            # handle lowercase field input gracefully
+            field = args.field
+            if field in string_fields.keys():
+                field = string_fields[args.field]
+            if field in entry._get_string_field_keys():
+                value = editable_input(
+                    green("{}: ".format(field)),
+                    entry._get_string_field(field)
+                )
+                entry._set_string_field(field, value)
+            else:
+                log.error(red("Invalid field ") + bold(args.field.lower()))
+        # otherwise, edit all fields
+        else:
+            for field in entry._get_string_field_keys():
+                value = editable_input(
+                    green("{}: ".format(field)),
+                    entry._get_string_field(field)
+                )
+                entry._set_string_field(field, value)
+
+    else:
+        log.error(red("No such entry ") + bold(args.entry_path))
+
+    kp.save()
+
+
 
 
 def move(args):
@@ -651,7 +701,7 @@ def create_parser():
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
     show_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
-    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field as plaintext")
+    show_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
     show_parser.set_defaults(func=show)
 
     # process args for `type` command
@@ -675,6 +725,12 @@ def create_parser():
     remove_parser = subparsers.add_parser('remove', aliases=['rm'], help="remove an entry")
     remove_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
     remove_parser.set_defaults(func=remove)
+
+    # process args for `edit` command
+    edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry")
+    edit_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
+    edit_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
+    edit_parser.set_defaults(func=edit)
 
     # process args for `move` command
     move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry or group")

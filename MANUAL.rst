@@ -7,9 +7,9 @@ KeePass CLI and dmenu interface
 -------------------------------
 
 :Author: Evan Widloski
-:Date:   2018-09-12
+:Date:   2018-11-20
 :Copyright: GPL-3.0
-:Version: 1.7.3
+:Version: 1.7.4
 :Manual group: password management
 
 SYNOPSIS
@@ -20,8 +20,8 @@ SYNOPSIS
 COMMANDS
 ========
 
-show [-h] [-f FIELD] PATH
-    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``-f FIELD`` to print only the specified field as plaintext, where ``FIELD`` is one of  ``title``, ``username``, ``password``, or ``url``.
+show [-h] [-f FIELD, --field FIELD] PATH
+    Show the contents of an entry, where ``PATH`` is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use ``-f FIELD`` to print only the specified field, where ``FIELD`` is one of  ``title``, ``username``, ``password``, ``url``, or a custom field.
 
 type [-h] [--tabbed] [--username] [--xdotool] PROG
     Automatically type out the password as if the user had typed it on the keyboard, where ``PROG`` is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the ``--tabbed`` option to type out the username then password, separated by a tab.  Use the ``--username`` option to show entry username in parenthesis during selection.  Use the ``--xdotool`` option to use ``xdotool`` instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.  See the examples section.
@@ -35,14 +35,17 @@ add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] [--append STR] PATH
 remove [-h] PATH
     Remove an entry/group from the database, where ``PATH`` is the full path to the group or entry.
 
+edit [-h] [-f FIELD, --field FIELD] PATH
+    Edit the contents of an entry, where ``PATH`` is the full path to the entry.  You will be prompted to edit each field value of the entry.  Use ``-f FIELD`` to edit only the specified field, where ``FIELD`` is one of  ``title``, ``username``, ``password``, ``url``, or a custom field.
+
 move [-h] SRC_PATH DEST_PATH
     Move an entry/group to another path, where ``SRC_PATH`` and ``DEST_PATH`` are the full paths to the source and destination items.  Providing two entry paths or two group paths will move and rename the group or entry.
 
 list [-h] [--username]
     List entries/groups in the database.  Use the ``--username`` option to show entry username in addition to title.
 
-grep [-h] [-i] [-f FIELD] PATTERN
-    List entries with titles matching a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``-f FIELD`` option to search other string fields, where ``FIELD`` is one of ``title``, ``username``, ``password``, ``url``, or a custom field key.  Use the ``-i`` option to enable case insensitive searching.
+grep [-h] [-i] [-f FIELD, --field FIELD] PATTERN
+    List entries with titles matching a regex pattern, where ``PATTERN`` is an `XSLT style`_ regular expression.  Use the ``-f FIELD`` option to search other string fields, where ``FIELD`` is one of ``title``, ``username``, ``password``, ``url``, or a custom field.  Use the ``-i`` option to enable case insensitive searching.
 
 .. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
 
