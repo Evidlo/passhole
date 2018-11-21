@@ -162,44 +162,78 @@ def create_password_cache(cache, password, fingerprint):
     infile.close()
 
 
-def open_database(args):
-    """Load database"""
+def open_database(
+        database=database_file,
+        keyfile=keyfile_path,
+        cache=passhole_cache,
+        no_keyfile=False,
+        no_password=False,
+        no_cache=False,
+        gpgkey=None,
+        **kwargs
+):
+    """Load database
+
+    Parameters
+    ----------
+    database : str, optional
+        path to create database
+    keyfile : str, optional
+        path to create keyfile
+    cache : str, optional
+        path to create password cache
+
+    Other Parameters
+    ----------------
+    no_keyfile : bool, optional
+        if True, assume database has no keyfile
+    no_password : bool, optional
+        if True, assume database has no password
+    no_cache : bool, optional
+        if True, don't create a password cache
+    gpgkey : str, optional
+        GPG key fingerprint of GPG key to use when creating cache
+
+    Returns
+    -------
+    PyKeePass object
+    """
     from pykeepass.pykeepass import PyKeePass
 
     # check if database exists
-    if not os.path.exists(args.database):
+    if not os.path.exists(database):
         log.error(
             red("No database found at ") +
-            bold(args.database) +
+            bold(database) +
             red(".  Run ") +
             bold("ph init")
         )
         sys.exit()
 
     # check if keyfile exists, try to use default keyfile
-    if args.no_keyfile:
+    if no_keyfile:
         keyfile = None
     else:
-        if not args.keyfile:
+        if not keyfile:
             if os.path.exists(keyfile_path):
                 keyfile = keyfile_path
             else:
                 keyfile = None
         else:
-            if os.path.exists(args.keyfile):
-                keyfile = args.keyfile
+            if os.path.exists(keyfile):
+                keyfile = keyfile
             else:
-                log.error(red("No keyfile found at ") + bold(args.keyfile))
+                log.error(red("No keyfile found at ") + bold(keyfile))
                 sys.exit()
 
-    if args.no_password:
+    if no_password:
         password = None
     else:
         # retrieve password from cache
-        if os.path.exists(os.path.expanduser(args.cache)) and not args.no_cache:
-            log.debug("Retrieving password from {}".format(args.cache))
+        if os.path.exists(os.path.expanduser(cache)) and not no_cache:
+            log.debug("Retrieving password from {}".format(cache))
             outfile = BytesIO()
-            with open(args.cache, 'rb') as infile:
+            with open(cache, 'rb') as infile:
                 try:
                     gpg.decrypt(infile, outfile)
                 except gpgme.GpgmeError as e:
@@ -242,24 +276,24 @@ def open_database(args):
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
             if password:
-                if not args.no_cache:
-                    create_password_cache(args.cache, password, args.gpgkey)
+                if not no_cache:
+                    create_password_cache(cache, password, gpgkey)
 
             else:
                 log.error(red("No password given"))
                 sys.exit()
 
     log.debug("opening {} with password:{} and keyfile:{}".format(
-        args.database,
+        database,
         str(password),
         str(keyfile)
     ))
     try:
-        kp = PyKeePass(args.database, password=password, keyfile=keyfile)
+        kp = PyKeePass(database, password=password, keyfile=keyfile)
     except IOError:
         log.error(red("Password or keyfile incorrect"))
-        if os.path.exists(os.path.expanduser(args.cache)) and not args.no_cache:
-            log.error(red("Try clearing the cache at ") + bold(args.cache))
+        if os.path.exists(os.path.expanduser(cache)) and not no_cache:
+            log.error(red("Try clearing the cache at ") + bold(cache))
         sys.exit()
     return kp
 
@@ -271,7 +305,7 @@ def type_entries(args):
     If `tabbed` is true, both the username and password are typed, separated
     by a tab"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     entry_paths = [entry.path for entry in kp.entries if entry.title]
     entry_texts = []
@@ -341,7 +375,7 @@ def type_entries(args):
 def show(args):
     """Print out the contents of an entry to console"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     entry = kp.find_entries(path=args.entry_path, first=True)
     if entry:
@@ -375,7 +409,7 @@ def show(args):
 def list_entries(args):
     """List Entries/Groups in the database as a tree"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
@@ -412,7 +446,7 @@ def list_entries(args):
 def grep(args):
     """Search all string fields for a string"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     flags = 'i' if args.i else None
     log.debug("Searching database for pattern: {}".format(args.pattern))
@@ -445,7 +479,7 @@ def decompose_path(path):
 def add(args):
     """Create new entry/group"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     [group_path, child_name] = decompose_path(args.path)
     if not child_name:
@@ -495,6 +529,10 @@ def add(args):
                 log.error(red("Passwords do not match"))
                 sys.exit()
 
+        # append fixed string to password
+        if args.append:
+            password += args.append
+
         url = input(green('URL: '))
         kp.add_entry(parent_group, child_name, username, password, url=url)
 
@@ -504,7 +542,7 @@ def add(args):
 def remove(args):
     """Remove an Entry/Group"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     # remove a group
     if args.path.endswith('/'):
@@ -530,7 +568,7 @@ def remove(args):
 def move(args):
     """Move an Entry/Group"""
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     [group_path, child_name] = decompose_path(args.dest_path)
     parent_group = kp.find_groups(path=group_path, first=True)
@@ -586,7 +624,7 @@ def dump(args):
 
     from lxml import etree
 
-    kp = open_database(args)
+    kp = open_database(**vars(args))
 
     print(
         etree.tostring(
@@ -630,6 +668,7 @@ def create_parser():
     add_parser.add_argument('-w', '--words', metavar='length', type=int, nargs='?', const=6, default=None, help="generate 'correct horse battery staple' style password when creating entry ")
     add_parser.add_argument('-a', '--alphanumeric', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric password")
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
+    add_parser.add_argument('--append', metavar='STR', type=str, help="append string to generated password")
     add_parser.set_defaults(func=add)
 
     # process args for `remove` command
