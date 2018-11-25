@@ -40,7 +40,10 @@ template_database_file = os.path.join(base_dir, 'blank.kdbx')
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
-string_fields = {
+
+gpg = gpgme.Context()
+
+reserved_fields = {
     'username':'UserName',
     'url':'URL',
     'password':'Password',
@@ -48,7 +51,6 @@ string_fields = {
     'title': 'Title'
 }
 
-gpg = gpgme.Context()
 
 # convenience functions for colored prompts
 def red(text):
@@ -68,6 +70,34 @@ def editable_input(prompt, prefill=None):
     result = input(prompt)
     readline.set_pre_input_hook()
     return result
+
+# assertions for entry/group existence/non-existence
+def get_group(kp, path):
+    group = kp.find_groups(path=path, first=True)
+    if group is None:
+        log.error(red("No such group ") + bold(path))
+        sys.exit()
+    return group
+def get_entry(kp, path):
+    entry = kp.find_entries(path=path, first=True)
+    if entry is None:
+        log.error(red("No such entry ") + bold(path))
+        sys.exit()
+    return entry
+def get_field(entry, field_input):
+    field = reserved_fields.get(field_input, field_input)
+    if field not in entry._get_string_field_keys():
+        log.error(red("No such field ") + bold(field_input))
+        sys.exit()
+    return field
+def no_entry(kp, path):
+    if kp.find_entries(path=path, first=True):
+        log.error(red("There is already an entry at ") + bold(path))
+        sys.exit()
+def no_group(kp, path):
+    if kp.find_groups(path=path, first=True):
+        log.error(red("There is already group at ") + bold(path))
+        sys.exit()
 
 
 def init_database(args):
@@ -139,6 +169,7 @@ def create_password_cache(cache, password, fingerprint):
                 selected_key = gpg.get_key(fingerprint.replace(' ', ''))
             except gpgme.GpgmeError:
                 log.error(red("Specified GPG key not found"))
+                sys.exit()
         # otherwise get the first key
         else:
             selected_key = keys[0]
@@ -273,6 +304,7 @@ def open_database(
 
             # otherwise use zenity
             else:
+                log.debug('Detected non-interactive shell')
                 NULL = open(os.devnull, 'w')
                 try:
                     p = subprocess.Popen(
@@ -284,6 +316,7 @@ def open_database(
                     )
                 except FileNotFoundError:
                     log.error(bold("zenity ") + red("not found."))
+                    sys.exit()
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
             if password:
@@ -347,11 +380,7 @@ def type_entries(args):
         log.warning("No path returned by {}".format(args.prog))
         return
 
-    selected_entry = kp.find_entries(path=selection_path, first=True)
-
-    if not selected_entry:
-        log.warning("No such entry {}".format(selection_path))
-        return
+    selected_entry = get_entry(kp, selection_path)
 
     log.debug("selected_entry:{}".format(selected_entry))
 
@@ -360,6 +389,7 @@ def type_entries(args):
             subprocess.call(["xdotool"] + args)
         except FileNotFoundError:
             log.error(bold("xdotool ") + red("not found"))
+            sys.exit()
 
     # type out password
     k = Controller()
@@ -388,33 +418,25 @@ def show(args):
 
     kp = open_database(**vars(args))
 
-    entry = kp.find_entries(path=args.entry_path, first=True)
-    if entry:
-        # show specified field
-        if args.field:
-            # handle lowercase field input gracefully
-            if args.field in string_fields.keys():
-                args.field = string_fields[args.field]
-            if args.field in entry._get_string_field_keys():
-                print(entry._get_string_field(args.field), end='')
-            else:
-                log.error(red("Invalid field ") + bold(args.field.lower()))
+    entry = get_entry(kp, args.entry_path)
+    # show specified field
+    if args.field:
+        # handle lowercase field input gracefully
+        field = get_field(entry, args.field)
+        print(entry._get_string_field(field), end='')
 
-        # otherwise, show all fields
-        else:
-            print(green("Title: ") + (entry.title or ''))
-            print(green("Username: ") + (entry.username or ''))
-            print(
-                green("Password: ") + Fore.RED + Back.RED +
-                (entry.password or '') +
-                Fore.RESET + Back.RESET
-            )
-            print(green("URL: ") + (entry.url or ''))
-            for field_name, field_value in entry.custom_properties.items():
-                print(green("{}: ".format(field_name)) + str(field_value or ''))
-
+    # otherwise, show all fields
     else:
-        log.error(red("No such entry ") + bold(args.entry_path))
+        print(green("Title: ") + (entry.title or ''))
+        print(green("Username: ") + (entry.username or ''))
+        print(
+            green("Password: ") + Fore.RED + Back.RED +
+            (entry.password or '') +
+            Fore.RESET + Back.RESET
+        )
+        print(green("URL: ") + (entry.url or ''))
+        for field_name, field_value in entry.custom_properties.items():
+            print(green("{}: ".format(field_name)) + str(field_value or ''))
 
 
 def list_entries(args):
@@ -462,9 +484,9 @@ def grep(args):
     flags = 'i' if args.i else None
     log.debug("Searching database for pattern: {}".format(args.pattern))
 
-    # handle lowercase field input gracefully
-    if args.field and args.field in string_fields.keys():
-        args.field = string_fields[args.field]
+    if args.field:
+        # handle lowercase field input gracefully
+        args.field = reserved_fields.get(args.field, args.field)
     else:
         args.field = 'Title'
 
@@ -495,22 +517,21 @@ def add(args):
     [group_path, child_name] = decompose_path(args.path)
     if not child_name:
         log.error(red("Path is invalid"))
+        sys.exit()
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , child_name:{}".format(group_path, child_name))
 
-    parent_group = kp.find_groups(path=group_path, first=True)
-
-    if parent_group is None:
-        log.error(red("No such group ") + bold(group_path))
-        return
+    parent_group = get_group(kp, group_path)
 
     # create a new group
     if args.path.endswith('/'):
+        no_group(kp, args.path)
         kp.add_group(parent_group, child_name)
 
     # create a new entry
     else:
+        no_entry(kp, args.path)
         username = editable_input(green('Username: '))
 
         # use urandom for number generation
@@ -557,21 +578,16 @@ def remove(args):
 
     # remove a group
     if args.path.endswith('/'):
-        group = kp.find_groups(path=args.path, first=True)
-        if group:
-            group.delete()
-        else:
-            log.error(red("No such group ") + bold(args.path))
+        group = get_group(kp, args.path)
+        if len(group.entries) > 0:
+            log.error(red("Non-empty group ") + bold(args.path))
             sys.exit()
+        group.delete()
 
     # remove an entry
     else:
-        entry = kp.find_entries(path=args.path, first=True)
-        if entry:
-            entry.delete()
-        else:
-            log.error(red("No such entry ") + bold(args.path))
-            sys.exit()
+        entry = get_entry(kp, args.path)
+        entry.delete()
 
     kp.save()
 
@@ -581,38 +597,35 @@ def edit(args):
 
     kp = open_database(**vars(args))
 
-    entry = kp.find_entries(path=args.entry_path, first=True)
+    entry = get_entry(kp, args.entry_path)
 
-    if entry is not None:
-        # edit specific field
-        if args.field:
-            # handle lowercase field input gracefully
-            field = args.field
-            if field in string_fields.keys():
-                field = string_fields[args.field]
-            if field in entry._get_string_field_keys():
-                value = editable_input(
-                    green("{}: ".format(field)),
-                    entry._get_string_field(field)
-                )
-                entry._set_string_field(field, value)
-            else:
-                log.error(red("Invalid field ") + bold(args.field.lower()))
-        # otherwise, edit all fields
-        else:
-            for field in entry._get_string_field_keys():
-                value = editable_input(
-                    green("{}: ".format(field)),
-                    entry._get_string_field(field)
-                )
-                entry._set_string_field(field, value)
-
+    # edit specific field
+    if args.field:
+        field = get_field(entry, args.field)
+        value = editable_input(
+            green("{}: ".format(field)),
+            entry._get_string_field(field)
+        )
+        entry._set_string_field(field, value)
+    # add/set a field
+    elif args.set:
+        field = reserved_fields.get(args.set[0], args.set[0])
+        entry._set_string_field(field, args.set[1])
+    # remove a field
+    elif args.remove:
+        field = get_field(entry, args.remove)
+        results = entry._element.xpath('String/Key[text()="{}"]/..'.format(field))
+        entry._element.remove(results[0])
+    # otherwise, edit all fields
     else:
-        log.error(red("No such entry ") + bold(args.entry_path))
+        for field in entry._get_string_field_keys():
+            value = editable_input(
+                green("{}: ".format(field)),
+                entry._get_string_field(field)
+            )
+            entry._set_string_field(field, value)
 
     kp.save()
-
-
 
 
 def move(args):
@@ -625,46 +638,34 @@ def move(args):
 
     # if source path is group
     if args.src_path.endswith('/'):
-        src = kp.find_groups(path=args.src_path, first=True)
-        if src:
-            # if dest path is group
-            if args.dest_path.endswith('/'):
-                dest = kp.find_groups(path=args.dest_path, first=True)
-                if dest:
-                    kp.move_group(src, dest)
-                else:
-                    src.name = child_name
-                    kp.move_group(src, parent_group)
-            # if dest path is entry
+        src = get_group(kp, args.src_path)
+        # if dest path is group
+        if args.dest_path.endswith('/'):
+            dest = kp.find_groups(path=args.dest_path, first=True)
+            if dest:
+                kp.move_group(src, dest)
             else:
-                log.error(red("Destination must end in '/'"))
-
+                src.name = child_name
+                kp.move_group(src, parent_group)
+        # if dest path is entry
         else:
-            log.error(red("No such group ") + bold(args.src_path))
+            log.error(red("Destination must end in '/'"))
+            sys.exit()
     # if source path is entry
     else:
-        src = kp.find_entries(path=args.src_path, first=True)
-        if src:
-            # if dest path is group
-            if args.dest_path.endswith('/'):
-                dest = kp.find_groups(path=args.dest_path, first=True)
-                if dest:
-                    kp.move_entry(src, dest)
-                    log.debug("Moving entry: {} -> {}".format(src, dest))
-                else:
-                    log.error(red("No such group ") + bold(args.dest_path))
-            # if dest path is entry
-            else:
-                dest = kp.find_entries(path=args.dest_path, first=True)
-                if dest:
-                    log.error(red("There is already an entry at ") + bold(args.dest_path))
-                else:
-                    log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
-                    src.title = child_name
-                    log.debug("Moving entry: {} -> {}".format(src, parent_group))
-                    kp.move_entry(src, parent_group)
+        src = get_entry(kp, args.src_path)
+        # if dest path is group
+        if args.dest_path.endswith('/'):
+            dest = get_group(kp, args.dest_path)
+            kp.move_entry(src, dest)
+            log.debug("Moving entry: {} -> {}".format(src, dest))
+        # if dest path is entry
         else:
-            log.error(red("No such entry ") + bold(args.src_path))
+            no_entry(kp, args.dest_path)
+            log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
+            src.title = child_name
+            log.debug("Moving entry: {} -> {}".format(src, parent_group))
+            kp.move_entry(src, parent_group)
 
     kp.save()
 
@@ -701,7 +702,7 @@ def create_parser():
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
     show_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
-    show_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
+    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
     show_parser.set_defaults(func=show)
 
     # process args for `type` command
@@ -729,7 +730,9 @@ def create_parser():
     # process args for `edit` command
     edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry")
     edit_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
-    edit_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
+    edit_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
+    edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
+    edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
     edit_parser.set_defaults(func=edit)
 
     # process args for `move` command
@@ -746,7 +749,7 @@ def create_parser():
     # process args for `grep` command
     grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
     grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
-    grep_parser.add_argument('-f', '--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
+    grep_parser.add_argument('--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
 
