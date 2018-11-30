@@ -8,7 +8,6 @@ from __future__ import print_function
 from builtins import input
 from .version import __version__
 import subprocess
-from pynput.keyboard import Controller, Key
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
@@ -349,6 +348,8 @@ def type_entries(args):
     If `tabbed` is true, both the username and password are typed, separated
     by a tab"""
 
+    from pynput.keyboard import Controller, Key
+
     kp = open_database(**vars(args))
 
     entry_paths = [entry.path for entry in kp.entries if entry.title]
@@ -487,6 +488,7 @@ def grep(args):
     if args.field:
         # handle lowercase field input gracefully
         args.field = reserved_fields.get(args.field, args.field)
+        print('lkjlkj')
     else:
         args.field = 'Title'
 
@@ -749,7 +751,7 @@ def create_parser():
     # process args for `grep` command
     grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
     grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
-    grep_parser.add_argument('--field', metavar='FIELD', type=str, default='.*', help="search entries for a match in a specific field")
+    grep_parser.add_argument('--field', metavar='FIELD', type=str, help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
 
