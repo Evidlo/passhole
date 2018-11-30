@@ -488,7 +488,6 @@ def grep(args):
     if args.field:
         # handle lowercase field input gracefully
         args.field = reserved_fields.get(args.field, args.field)
-        print('lkjlkj')
     else:
         args.field = 'Title'
 
@@ -751,6 +750,7 @@ def create_parser():
     # process args for `grep` command
     grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
     grep_parser.add_argument('pattern', metavar='PATTERN', type=str, help="XSLT style regular expression")
+    #FIXME - default='.*' doesn't work anymore for some reason
     grep_parser.add_argument('--field', metavar='FIELD', type=str, help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
