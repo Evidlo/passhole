@@ -113,32 +113,36 @@ def init_database(args):
             log.error(red("Passwords do not match"))
             sys.exit()
 
+        if args.no_keyfile:
+            keyfile = None
+        else:
+            use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
+            # dont use a keyfile
+            if use_keyfile == 'n':
+                keyfile = None
+
+            # generate a random AES256 keyfile
+            else:
+                keyfile = keyfile_path if not args.keyfile else args.keyfile
+
+                log.debug("Looking for keyfile at {}".format(keyfile))
+                if os.path.exists(keyfile):
+                    print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
+                    sys.exit()
+
+                with open(keyfile, 'w') as f:
+                    contents = '''
+                    <?xml version="1.0" encoding="UTF-8"?>
+                    <KeyFile>
+                        <Meta><Version>1.00</Version></Meta>
+                        <Key><Data>{}</Data></Key>
+                    </KeyFile>
+                    '''
+                    log.debug("keyfile contents {}".format(contents))
+                    f.write(contents.format(b64encode(os.urandom(32)).decode()))
+
         print("Creating database at {}".format(bold(args.database)))
         shutil.copy(template_database_file, args.database)
-
-        use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
-        # dont use a keyfile
-        if use_keyfile == 'n':
-            keyfile = None
-        # generate a random AES256 keyfile
-        else:
-            keyfile = keyfile_path if not args.keyfile else args.keyfile
-
-            log.debug("Looking for keyfile at {}".format(keyfile))
-            if os.path.exists(keyfile):
-                print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
-                sys.exit()
-
-            with open(keyfile, 'w') as f:
-                contents = '''
-                <?xml version="1.0" encoding="UTF-8"?>
-                <KeyFile>
-                    <Meta><Version>1.00</Version></Meta>
-                    <Key><Data>{}</Data></Key>
-                </KeyFile>
-                '''
-                log.debug("keyfile contents {}".format(contents))
-                f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
         # create database
         kp = PyKeePass(args.database, password='password')

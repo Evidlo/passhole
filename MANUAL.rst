@@ -101,7 +101,9 @@ Files
 
 Python Scripts
 ==============
-The *open_database* function is available for import for conveniently opening your database with password caching enabled.
+The *open_database* function is available for import to take advantage of password caching features.  It returns a `PyKeePass`_ object.
+
+.. PyKeePass: https://github.com/pschmitt/pykeepass
 
 .. code:: python
 
