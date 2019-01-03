@@ -446,13 +446,9 @@ def list_entries(args):
     kp = open_database(**vars(args))
 
     if args.group.endswith('/'):
-        searched_group = kp.find_groups(path=args.group, first=True)
+        searched_group = get_group(kp, args.group)
     else:
-        searched_group = kp.find_groups(path=args.group + '/', first=True)
-
-    if searched_group is None:
-         log.error(red("No such group " + bold(args.group)))
-         return
+        searched_group = get_group(kp, args.group + '/')
 
     # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
