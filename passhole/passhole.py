@@ -445,11 +445,6 @@ def list_entries(args):
 
     kp = open_database(**vars(args))
 
-    if args.group.endswith('/'):
-        searched_group = get_group(kp, args.group)
-    else:
-        searched_group = get_group(kp, args.group + '/')
-
     # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
         branch_corner = "└── " if show_branches else ""
@@ -479,7 +474,7 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
-    list_items(searched_group, "", show_branches=False)
+    list_items(get_group(kp, args.path), "", show_branches=False)
 
 
 def grep(args):
@@ -749,7 +744,7 @@ def create_parser():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
-    list_parser.add_argument('--group', metavar='LIST_PATH', default='/', type=str, help=path_help)
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default='/', type=str, help=path_help)
     list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
