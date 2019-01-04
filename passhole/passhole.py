@@ -474,7 +474,15 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
-    list_items(get_group(kp, args.path), "", show_branches=False)
+    if args.path.endswith('/'):
+        list_items(get_group(kp, args.path), "", show_branches=False)
+    else:
+        entry = get_entry(kp, args.path)
+        if args.username:
+            entry_string = "{} ({})".format(str(entry.title), str(entry.username))
+        else:
+            entry_string = "{}".format(str(entry.title))
+        print(entry_string)
 
 
 def grep(args):
