@@ -474,7 +474,15 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
-    list_items(kp.root_group, "", show_branches=False)
+    if args.path.endswith('/'):
+        list_items(get_group(kp, args.path), "", show_branches=False)
+    else:
+        entry = get_entry(kp, args.path)
+        if args.username:
+            entry_string = "{} ({})".format(str(entry.title), str(entry.username))
+        else:
+            entry_string = "{}".format(str(entry.title))
+        print(entry_string)
 
 
 def grep(args):
@@ -744,6 +752,7 @@ def create_parser():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default='/', type=str, help=path_help)
     list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
