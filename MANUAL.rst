@@ -41,8 +41,8 @@ edit [-h] [--field FIELD | --set FIELD VALUE | --remove FIELD] PATH
 move [-h] SRC_PATH DEST_PATH
     Move an entry/group to another path, where *SRC_PATH* and *DEST_PATH* are the full paths to the source and destination items.  Providing two entry paths or two group paths will move and rename the group or entry.
 
-list [-h] [--username]
-    List entries/groups in the database.  Use the --username option to show entry username in addition to title.
+list [-h] [--username] [PATH]
+    List entries/groups in the database, where *PATH* is an optional path to a group or entry.  Use the --username option to show entry username in addition to title.
 
 grep [-h] [-i] [--field FIELD] PATTERN
     List entries with titles matching a regex pattern, where *PATTERN* is an `XSLT style`_ regular expression.  Use the --field *FIELD* option to search other string fields, where *FIELD* is one of *title*, *username*, *password*, *url*, or a custom field.  Use the -i option to enable case insensitive searching.

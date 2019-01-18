@@ -575,6 +575,12 @@ def add(args):
             password += args.append
 
         url = editable_input(green('URL: '))
+
+        log.debug(
+            'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
+                parent_group, child_name, username, password, url
+            )
+        )
         kp.add_entry(parent_group, child_name, username, password, url=url)
 
     kp.save()
