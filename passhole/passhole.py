@@ -113,36 +113,32 @@ def init_database(args):
             log.error(red("Passwords do not match"))
             sys.exit()
 
-        if args.no_keyfile:
-            keyfile = None
-        else:
-            use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
-            # dont use a keyfile
-            if use_keyfile == 'n':
-                keyfile = None
-
-            # generate a random AES256 keyfile
-            else:
-                keyfile = keyfile_path if not args.keyfile else args.keyfile
-
-                log.debug("Looking for keyfile at {}".format(keyfile))
-                if os.path.exists(keyfile):
-                    print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
-                    sys.exit()
-
-                with open(keyfile, 'w') as f:
-                    contents = '''
-                    <?xml version="1.0" encoding="UTF-8"?>
-                    <KeyFile>
-                        <Meta><Version>1.00</Version></Meta>
-                        <Key><Data>{}</Data></Key>
-                    </KeyFile>
-                    '''
-                    log.debug("keyfile contents {}".format(contents))
-                    f.write(contents.format(b64encode(os.urandom(32)).decode()))
-
         print("Creating database at {}".format(bold(args.database)))
         shutil.copy(template_database_file, args.database)
+
+        use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
+        # dont use a keyfile
+        if use_keyfile == 'n':
+            keyfile = None
+        # generate a random AES256 keyfile
+        else:
+            keyfile = keyfile_path if not args.keyfile else args.keyfile
+
+            log.debug("Looking for keyfile at {}".format(keyfile))
+            if os.path.exists(keyfile):
+                print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
+                sys.exit()
+
+            with open(keyfile, 'w') as f:
+                contents = '''
+                <?xml version="1.0" encoding="UTF-8"?>
+                <KeyFile>
+                    <Meta><Version>1.00</Version></Meta>
+                    <Key><Data>{}</Data></Key>
+                </KeyFile>
+                '''
+                log.debug("keyfile contents {}".format(contents))
+                f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
         # create database
         kp = PyKeePass(args.database, password='password')
@@ -478,7 +474,15 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
-    list_items(kp.root_group, "", show_branches=False)
+    if args.path.endswith('/'):
+        list_items(get_group(kp, args.path), "", show_branches=False)
+    else:
+        entry = get_entry(kp, args.path)
+        if args.username:
+            entry_string = "{} ({})".format(str(entry.title), str(entry.username))
+        else:
+            entry_string = "{}".format(str(entry.title))
+        print(entry_string)
 
 
 def grep(args):
@@ -571,6 +575,12 @@ def add(args):
             password += args.append
 
         url = editable_input(green('URL: '))
+
+        log.debug(
+            'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
+                parent_group, child_name, username, password, url
+            )
+        )
         kp.add_entry(parent_group, child_name, username, password, url=url)
 
     kp.save()
@@ -748,6 +758,7 @@ def create_parser():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default='/', type=str, help=path_help)
     list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
