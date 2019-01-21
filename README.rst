@@ -1,6 +1,10 @@
 Passhole
 ========
 
+.. image:: https://img.shields.io/matrix/pykeepass:matrix.org.svg
+   :target: https://matrix.to/#/#pykeepass:matrix.org
+
+
 ``passhole`` is a CLI interface for KeePass 1.x (v3) and 2.x (v4) databases with support for dmenu inspired by `pass`_.
 
 .. _pass: https://www.passwordstore.org
