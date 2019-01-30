@@ -20,6 +20,8 @@ import sys
 import shutil
 import logging
 import argparse
+from configparser import ConfigParser
+from collections import OrderedDict
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -27,9 +29,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-database_file = os.path.expanduser('~/.passhole.kdbx')
-keyfile_path = os.path.expanduser('~/.passhole.key')
-passhole_cache = os.path.expanduser('~/.cache/passhole_cache')
+default_config = os.path.expanduser('~/.config/passhole.ini')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
@@ -72,12 +72,14 @@ def editable_input(prompt, prefill=None):
 
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
+    _, path = split_db_prefix(path)
     group = kp.find_groups(path=path, first=True)
     if group is None:
         log.error(red("No such group ") + bold(path))
         sys.exit()
     return group
 def get_entry(kp, path):
+    _, path = split_db_prefix(path)
     entry = kp.find_entries(path=path, first=True)
     if entry is None:
         log.error(red("No such entry ") + bold(path))
@@ -89,6 +91,18 @@ def get_field(entry, field_input):
         log.error(red("No such field ") + bold(field_input))
         sys.exit()
     return field
+def get_database(databases, path):
+    """Return database specified in path or return default if not given"""
+    name, _ = split_db_prefix(path)
+    # handle @ syntax
+    if name is not None:
+        if name not in databases.keys():
+            log.error(red("No such database ") + bold(name))
+            sys.exit()
+        return databases[name]
+    # return default database (first in OrderedDict)
+    else:
+        return next(iter(databases.values()))
 def no_entry(kp, path):
     if kp.find_entries(path=path, first=True):
         log.error(red("There is already an entry at ") + bold(path))
@@ -97,6 +111,15 @@ def no_group(kp, path):
     if kp.find_groups(path=path, first=True):
         log.error(red("There is already group at ") + bold(path))
         sys.exit()
+def split_db_prefix(path):
+    if path.startswith('@'):
+        if '/' in path:
+            return path.lstrip('@').split('/', 1)
+        else:
+            return path.lstrip('@'), ''
+    else:
+        return None, path
+
 
 
 def init_database(args):
@@ -146,7 +169,7 @@ def init_database(args):
         kp.keyfile = keyfile
         kp.save()
         # create password cache
-        if password and not args.no_cache:
+        if password and args.cache is not None:
             create_password_cache(args.cache, password, args.gpgkey)
 
     # quit if database already exists
@@ -176,8 +199,8 @@ def create_password_cache(cache, password, fingerprint):
     else:
         log.error(
             red("no GPG keys found. Try ") +
-            bold("gpg2 --gen-key") + red(" or use the ") +
-            bold("--no-cache") + red(" option"))
+            bold("gpg2 --gen-key") + red(" or omit cache option")
+        )
         sys.exit()
 
     # encrypt password and write to cache file
@@ -203,142 +226,185 @@ def create_password_cache(cache, password, fingerprint):
     infile.close()
 
 
-def open_database(
-        database=database_file,
-        keyfile=keyfile_path,
-        cache=passhole_cache,
-        no_keyfile=False,
+def open_databases(
+        database=None,
+        keyfile=None,
+        cache=None,
         no_password=False,
-        no_cache=False,
         gpgkey=None,
+        config=default_config,
         **kwargs
 ):
-    """Load database
+    """Load databases
 
     Parameters
     ----------
     database : str, optional
         path to create database
     keyfile : str, optional
-        path to create keyfile
+        path to keyfile.  if not given, assume database has no keyfile
     cache : str, optional
-        path to create password cache
+        path to create password cache.  if not given, don't use or create password cache
 
     Other Parameters
     ----------------
-    no_keyfile : bool, optional
-        if True, assume database has no keyfile
     no_password : bool, optional
         if True, assume database has no password
-    no_cache : bool, optional
-        if True, don't create a password cache
     gpgkey : str, optional
         GPG key fingerprint of GPG key to use when creating cache
 
     Returns
     -------
-    PyKeePass object
+    Ordered dictionary of PyKeePass objects keyed by name, first is default
     """
     from pykeepass.pykeepass import PyKeePass
 
-    # check if database exists
-    if not os.path.exists(database):
-        log.error(
-            red("No database found at ") +
-            bold(database) +
-            red(".  Run ") +
-            bold("ph init")
-        )
-        sys.exit()
+    def open_database(name, database, keyfile, cache, no_password, gpgkey):
+        """Open a database and return KeePass object"""
 
-    # check if keyfile exists, try to use default keyfile
-    if no_keyfile:
-        keyfile = None
-    else:
-        if not keyfile:
-            if os.path.exists(keyfile_path):
-                keyfile = keyfile_path
-            else:
-                keyfile = None
+        database = os.path.expanduser(database) if database is not None else database
+        keyfile = os.path.expanduser(keyfile) if keyfile is not None else keyfile
+        cache = os.path.expanduser(cache) if cache is not None else cache
+
+        # check if database exists
+        if not os.path.exists(database):
+            log.error(
+                red("No database found at ") +
+                bold(database)
+            )
+            sys.exit()
+
+        # if path of given keyfile doesn't exist
+        if keyfile is not None and  not os.path.exists(keyfile):
+            log.error(red("No keyfile found at ") + bold(keyfile))
+            sys.exit()
+
+        if no_password:
+            password = None
         else:
-            if os.path.exists(keyfile):
-                keyfile = keyfile
-            else:
-                log.error(red("No keyfile found at ") + bold(keyfile))
-                sys.exit()
+            # retrieve password from cache
+            if cache is not None and os.path.exists(cache):
+                log.debug("Retrieving password from {}".format(cache))
+                outfile = BytesIO()
+                with open(cache, 'rb') as infile:
+                    try:
+                        gpg.decrypt(infile, outfile)
+                    except gpgme.GpgmeError as e:
+                        if e.code == gpgme.ERR_DECRYPT_FAILED:
+                            log.error(red("Could not decrypt cache"))
+                            sys.exit()
+                        elif e.code == gpgme.ERR_NO_SECKEY:
+                            log.error(
+                                red("No GPG secret key found.  Please generate a keypair using ") +
+                                bold("gpg2 --full-generate-key")
+                            )
+                            sys.exit()
+                        elif e.code == gpgme.ERR_CANCELED:
+                            sys.exit()
+                        else:
+                            raise e
 
-    if no_password:
-        password = None
-    else:
-        # retrieve password from cache
-        if os.path.exists(os.path.expanduser(cache)) and not no_cache:
-            log.debug("Retrieving password from {}".format(cache))
-            outfile = BytesIO()
-            with open(cache, 'rb') as infile:
-                try:
-                    gpg.decrypt(infile, outfile)
-                except gpgme.GpgmeError as e:
-                    if e.code == gpgme.ERR_DECRYPT_FAILED:
-                        log.error(red("Could not decrypt cache"))
-                        sys.exit()
-                    elif e.code == gpgme.ERR_NO_SECKEY:
-                        log.error(
-                            red("No GPG secret key found.  Please generate a keypair using ") +
-                            bold("gpg2 --full-generate-key")
+                password = outfile.getvalue().decode('utf8')
+                outfile.close()
+
+            # if no cache, prompt for password and save it to cache
+            else:
+
+                if name is not None:
+                    prompt = 'Enter password ({}):'.format(name)
+                else:
+                    prompt = 'Enter password:'
+
+                # check if running in interactive shell
+                if os.isatty(sys.stdout.fileno()):
+                    password = getpass('{} '.format(prompt))
+
+                # otherwise use zenity
+                else:
+                    log.debug('Detected non-interactive shell')
+                    NULL = open(os.devnull, 'w')
+                    try:
+                        p = subprocess.Popen(
+                            ["zenity", "--entry", "--hide-text", "--text='{}'".format(prompt)],
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            stderr=NULL,
+                            close_fds=True
                         )
+                    except FileNotFoundError:
+                        log.error(bold("zenity ") + red("not found."))
                         sys.exit()
-                    elif e.code == gpgme.ERR_CANCELED:
-                        sys.exit()
-                    else:
-                        raise e
+                    password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-            password = outfile.getvalue().decode('utf8')
-            outfile.close()
+                if password:
+                    if cache is not None:
+                        create_password_cache(cache, password, gpgkey)
 
-        # if no cache, prompt for password and save it to cache
-        else:
-            # check if running in interactive shell
-            if os.isatty(sys.stdout.fileno()):
-                password = getpass('Enter password: ')
-
-            # otherwise use zenity
-            else:
-                log.debug('Detected non-interactive shell')
-                NULL = open(os.devnull, 'w')
-                try:
-                    p = subprocess.Popen(
-                        ["zenity", "--entry", "--hide-text", "--text='Enter password'"],
-                        stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.NULL,
-                        close_fds=True
-                    )
-                except FileNotFoundError:
-                    log.error(bold("zenity ") + red("not found."))
+                else:
+                    log.error(red("No password given"))
                     sys.exit()
-                password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-            if password:
-                if not no_cache:
-                    create_password_cache(cache, password, gpgkey)
+        log.debug("opening {} with password:{} and keyfile:{}".format(
+            database,
+            str(password),
+            str(keyfile)
+        ))
+        try:
+            kp = PyKeePass(database, password=password, keyfile=keyfile)
+        except IOError:
+            log.error(red("Password or keyfile incorrect"))
+            if os.path.exists(cache):
+                log.error(red("Try clearing the cache at ") + bold(cache))
+            sys.exit()
 
-            else:
-                log.error(red("No password given"))
+        return kp
+
+    databases = []
+
+    # if 'database' argument given, ignore config completely
+    if database is not None:
+        kp = open_database(None, database, keyfile, cache, no_password, gpgkey)
+        databases.append((None, kp))
+
+    # otherwise, load each database in config
+    else:
+        if not os.path.exists(config):
+                log.error(red("No config found at ") + bold(config))
                 sys.exit()
 
-    log.debug("opening {} with password:{} and keyfile:{}".format(
-        database,
-        str(password),
-        str(keyfile)
-    ))
-    try:
-        kp = PyKeePass(database, password=password, keyfile=keyfile)
-    except IOError:
-        log.error(red("Password or keyfile incorrect"))
-        if os.path.exists(os.path.expanduser(cache)) and not no_cache:
-            log.error(red("Try clearing the cache at ") + bold(cache))
-        sys.exit()
-    return kp
+        c = ConfigParser()
+        c.read(config)
+
+        has_default = False
+
+        for section in c.sections():
+            s = c[section]
+
+            if s.get('database') is None:
+                log.error(bold('database') + red(' option is required'))
+                sys.exit()
+
+            kp = open_database(
+                section,
+                s.get('database'),
+                s.get('keyfile'),
+                s.get('cache'),
+                s.get('no-password'),
+                s.get('gpgkey')
+            )
+
+            # add a 'default' key for the default database
+            if bool(s.get('default')):
+                databases.insert(0, (section, kp))
+                has_default = True
+            else:
+                databases.append((section, kp))
+
+        if not has_default:
+            log.warning("No default database specified in config")
+
+
+    return OrderedDict(databases)
 
 
 def type_entries(args):
@@ -350,15 +416,18 @@ def type_entries(args):
 
     from pynput.keyboard import Controller, Key
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
 
-    entry_paths = [entry.path for entry in kp.entries if entry.title]
+    entry_paths = []
     entry_texts = []
-    for entry in kp.entries:
-        if args.username:
-            entry_texts.append("{} ({})".format(str(entry.path), str(entry.username)))
-        else:
-            entry_texts.append("{}".format(str(entry.path)))
+    for name, kp in databases.items():
+        for entry in kp.entries:
+            if entry.title:
+                entry_paths.append('@{}/{}'.format(name, entry.path))
+                if args.username:
+                    entry_texts.append("{} ({})".format(str(entry.path), str(entry.username)))
+                else:
+                    entry_texts.append("@{}/{}".format(name, entry.path))
 
     items = '\n'.join(sorted(entry_texts))
 
@@ -381,6 +450,7 @@ def type_entries(args):
         log.warning("No path returned by {}".format(args.prog))
         return
 
+    kp = get_database(databases, selection_path)
     selected_entry = get_entry(kp, selection_path)
 
     log.debug("selected_entry:{}".format(selected_entry))
@@ -417,9 +487,10 @@ def type_entries(args):
 def show(args):
     """Print out the contents of an entry to console"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    kp = get_database(databases, args.path)
 
-    entry = get_entry(kp, args.entry_path)
+    entry = get_entry(kp, args.path)
     # show specified field
     if args.field:
         # handle lowercase field input gracefully
@@ -443,7 +514,7 @@ def show(args):
 def list_entries(args):
     """List Entries/Groups in the database as a tree"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
 
     # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
@@ -474,35 +545,57 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
-    if args.path.endswith('/'):
-        list_items(get_group(kp, args.path), "", show_branches=False)
+    # print all databases
+    if args.path is None:
+        for position, (name, kp) in enumerate(databases.items()):
+            # print names for config-provided databases
+            if len(databases) > 1:
+                print('[{}]{}'.format(
+                    bold(green(name)),
+                    ' (default)' if position == 0 else ''
+                ))
+            list_items(kp.root_group, "", show_branches=False)
+
+            print()
+    # print specific database
     else:
-        entry = get_entry(kp, args.path)
-        if args.username:
-            entry_string = "{} ({})".format(str(entry.title), str(entry.username))
+        kp = get_database(databases, args.path)
+        # if group, list items
+        if args.path.endswith('/'):
+            list_items(get_group(kp, args.path), "", show_branches=False)
+        # if entry, print entry contents
         else:
-            entry_string = "{}".format(str(entry.title))
-        print(entry_string)
+            args.field = None
+            show(args)
 
 
 def grep(args):
     """Search all string fields for a string"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
 
-    flags = 'i' if args.i else None
-    log.debug("Searching database for pattern: {}".format(args.pattern))
+    for position, (name, kp) in enumerate(databases.items()):
+        # print names for config-provided databases
+        if len(databases) > 1:
+            print('[{}]{}'.format(
+                bold(green(name)),
+                ' (default)' if position == 0 else ''
+            ))
+        flags = 'i' if args.i else None
+        log.debug("Searching database for pattern: {}".format(args.pattern))
 
-    if args.field:
-        # handle lowercase field input gracefully
-        args.field = reserved_fields.get(args.field, args.field)
-    else:
-        args.field = 'Title'
+        if args.field:
+            # handle lowercase field input gracefully
+            args.field = reserved_fields.get(args.field, args.field)
+        else:
+            args.field = 'Title'
 
-    entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
+        entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
 
-    for entry in entries:
-        print(entry.path)
+        for entry in entries:
+            print(entry.path)
+
+        print()
 
 
 def decompose_path(path):
@@ -521,7 +614,8 @@ def decompose_path(path):
 def add(args):
     """Create new entry/group"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    kp = get_database(databases, args.path)
 
     [group_path, child_name] = decompose_path(args.path)
     if not child_name:
@@ -589,7 +683,8 @@ def add(args):
 def remove(args):
     """Remove an Entry/Group"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    kp = get_database(databases, args.path)
 
     # remove a group
     if args.path.endswith('/'):
@@ -610,9 +705,10 @@ def remove(args):
 def edit(args):
     """Edit fields of an Entry"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    kp = get_database(databases, args.path)
 
-    entry = get_entry(kp, args.entry_path)
+    entry = get_entry(kp, args.path)
 
     # edit specific field
     if args.field:
@@ -646,43 +742,46 @@ def edit(args):
 def move(args):
     """Move an Entry/Group"""
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    src_kp = get_database(databases, args.src_path)
+    dest_kp = get_database(databases, args.dest_path)
 
     [group_path, child_name] = decompose_path(args.dest_path)
-    parent_group = kp.find_groups(path=group_path, first=True)
+    parent_group = get_group(dest_kp, group_path)
 
     # if source path is group
     if args.src_path.endswith('/'):
-        src = get_group(kp, args.src_path)
+        src = get_group(src_kp, args.src_path)
         # if dest path is group
         if args.dest_path.endswith('/'):
-            dest = kp.find_groups(path=args.dest_path, first=True)
+            dest = dest_kp.find_groups(path=args.dest_path, first=True)
             if dest:
-                kp.move_group(src, dest)
+                dest_kp.move_group(src, dest)
             else:
                 src.name = child_name
-                kp.move_group(src, parent_group)
+                dest_kp.move_group(src, parent_group)
         # if dest path is entry
         else:
             log.error(red("Destination must end in '/'"))
             sys.exit()
     # if source path is entry
     else:
-        src = get_entry(kp, args.src_path)
+        src = get_entry(src_kp, args.src_path)
         # if dest path is group
         if args.dest_path.endswith('/'):
-            dest = get_group(kp, args.dest_path)
-            kp.move_entry(src, dest)
+            dest = get_group(dest_kp, args.dest_path)
+            dest_kp.move_entry(src, dest)
             log.debug("Moving entry: {} -> {}".format(src, dest))
         # if dest path is entry
         else:
-            no_entry(kp, args.dest_path)
+            no_entry(dest_kp, args.dest_path)
             log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
             src.title = child_name
             log.debug("Moving entry: {} -> {}".format(src, parent_group))
-            kp.move_entry(src, parent_group)
+            dest_kp.move_entry(src, parent_group)
 
-    kp.save()
+    src_kp.save()
+    dest_kp.save()
 
 
 def dump(args):
@@ -716,7 +815,7 @@ def create_parser():
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
-    show_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
+    show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
     show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
     show_parser.set_defaults(func=show)
 
@@ -744,7 +843,7 @@ def create_parser():
 
     # process args for `edit` command
     edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry")
-    edit_parser.add_argument('entry_path', metavar='PATH', type=str, help="path to entry")
+    edit_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
     edit_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
     edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
@@ -758,7 +857,7 @@ def create_parser():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
-    list_parser.add_argument('path', nargs='?', metavar='PATH', default='/', type=str, help=path_help)
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default=None, type=str, help=path_help)
     list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
@@ -780,13 +879,12 @@ def create_parser():
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
-    parser.add_argument('--cache', metavar='PATH', type=str, default=passhole_cache, help="specify password cache")
-    parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache database password")
-    parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
+    parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
+    parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
-    parser.add_argument('--no-keyfile', action='store_true', default=False, help="don't look for a database keyfile or create one")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
-    parser.add_argument('--database', metavar='PATH', type=str, default=database_file, help="specify database path")
+    parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
+    parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
     return parser

@@ -22,11 +22,11 @@ Passhole
 Features
 ------------
 
-- add, delete, move, rename entries and groups
-- generate `correct horse battery staple`_ style passwords
-- generate alphanumeric passwords
+- add, delete, move, edit, rename entries and groups
+- generate `correct horse battery staple`_ style, alphanumeric, symbolic passwords
 - temporarily cache database password for 10 minutes
 - autofill selected forms via keyboard shortcut (using the ``type`` command)
+- multiple databases
 
 .. _correct horse battery staple: http://xkcd.com/936
 
