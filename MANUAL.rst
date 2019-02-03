@@ -58,7 +58,8 @@ OPTIONAL ARGS
 =============
 
 \-h, \-\-help
-  Print out a help message and exit. Use in conjunction with a command for command-specific help.                                                                                                                                                   
+  Print out a help message and exit. Use in conjunction with a command for command-specific help.
+
 \-\-debug
   Enable debug messages.
                                                                                                    
@@ -72,10 +73,13 @@ OPTIONAL ARGS
   Specify location to cache password with gpg-agent, where *PATH* is a location on the filesystem.  No effect if --database is not given.
 
 \-\-no-password
-  Don't prompt for a password when accessing or modifying the database.  No effect if --database is not given.
-                                                                                                   
+  Don't prompt for a password when accessing or modifying the database.  No effect if --database is not given.                                                              
+
 \-\-gpgkey FINGERPRINT
   Specify GPG key to use when caching password, where *FINGERPRINT* is the fingerprint of the GPG key. *passhole* defaults to the first key in the keychain. Use 'gpg --list-keys --fingerprint' to get a list of keys and their fingerprints.  No effect if --database is not given.
+
+\-\-config PATH
+  Specify path to config.
 
 \-v, \-\-version
   Print out version information.                                               
@@ -84,7 +88,7 @@ Files
 =====
 
 ~/.config/passhole.ini
-    Default location of config.  Specify multiple databases here or edit the default paths of the default database.  See the config section for supported directives.
+    Default location of config.  Specify multiple databases here or edit database options.  See the config section for supported directives.
 
 ~/.passhole.kdbx
     Default location of KeePass database. Override with --database *PATH*
@@ -94,6 +98,27 @@ Files
 
 ~/.cache/passhole_cache
     Default location where gpg-agent temporarily caches the database password.  Override with --cache or in config.
+
+Config
+======
+
+Located at *~/.config/passhole.ini* by default.  Can be overriden with the --config option.  Each section in the config corresponds to a database.  The supported options are:
+
+database: /path/to/example.kdbx
+    Required. The path to the kdbx file.
+
+keyfile: /path/to/example.key
+    Optional.  Path to keyfile.  If not given, assume database has no keyfile.
+
+cache: /path/to/example.cache
+    Optional.  Where to cache encrypted password using GPG2.  *~/.cache/example_cache* is a good choice.  If not given, the password will not be cached.
+
+no-password: True
+    Optional.  Assume database has no password and don't prompt for it.  If not given, the password will be loaded from cache or the user prompted.
+
+default: True
+    Optional.  Set this database as default.  When using multiple databases, entry or group paths with no **@[Name]** database prefix are assumed to refer to this database.
+
 
 Multiple Databases
 ==================
@@ -109,27 +134,9 @@ Multiple databases may be specified in the config.  Prefix group or entry paths 
    $ ph ls @test/
 
 
-Config
-======
-
-Each section in the config corresponds to a database.  The supported options are:
-
-database: /path/to/example.kdbx
-    Required. The path to the kdbx file.
-
-keyfile: /path/to/example.key
-    Path to keyfile.  If not given, assume database has no keyfile.
-
-cache: /path/to/example.cache
-    Where to cache encrypted password using GPG2.  *~/.cache/example_cache* is a good choice.  If not given, don't cache password.
-
-no-password: True
-    Assume database has no password and don't prompt for it.
-
-
 Python Scripts
 ==============
-The *open_database* function is available for import for conveniently opening your database with password caching enabled.
+The *open_databases* function is available for import for conveniently opening your database with password caching enabled.  It returns an OrderedDict with database names as keys (as given in the config) and PyKeePass objects as values.  The default database is the first element in this dictionary.
 
 .. code:: python
 
@@ -146,7 +153,6 @@ add a new entry with manually created password
 .. code:: bash
 
    $ ph add github
-
    Username: Evidlo
    Password: 
    Confirm: 

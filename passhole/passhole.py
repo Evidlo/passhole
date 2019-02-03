@@ -418,18 +418,19 @@ def type_entries(args):
 
     databases = open_databases(**vars(args))
 
-    entry_paths = []
+    # generate multi-line string to send to dmenu
     entry_texts = []
     for name, kp in databases.items():
         for entry in kp.entries:
             if entry.title:
-                entry_paths.append('@{}/{}'.format(name, entry.path))
-                if args.username:
-                    entry_texts.append("{} ({})".format(str(entry.path), str(entry.username)))
+                if len(databases) > 1:
+                    entry_text = "@{}/{}".format(name, entry.path)
                 else:
-                    entry_texts.append("@{}/{}".format(name, entry.path))
-
-    items = '\n'.join(sorted(entry_texts))
+                    entry_text = entry.path
+                if args.username:
+                    entry_text += " ({})".format(entry.username)
+                entry_texts.append(entry_text)
+    dmenu_text = '\n'.join(sorted(entry_texts))
 
     # get the entry from dmenu
     try:
@@ -442,7 +443,7 @@ def type_entries(args):
     except FileNotFoundError:
         log.error(bold(args.prog[0]) + red(" not found."))
         sys.exit()
-    stdout = p.communicate(input=items.encode('utf-8'))[0].decode('utf-8')
+    stdout = p.communicate(input=dmenu_text.encode('utf-8'))[0].decode('utf-8')
     selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
 
     # if nothing was selected, return None
@@ -880,8 +881,8 @@ def create_parser():
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
-    parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
+    parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
     parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
     parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify database path")
