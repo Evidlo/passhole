@@ -435,10 +435,11 @@ def type_entries(args):
     # get the entry from dmenu
     try:
         p = subprocess.Popen(
-            args.prog.split(' '),
+            args.prog,
             stdout=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+            shell=True
         )
     except FileNotFoundError:
         log.error(bold(args.prog[0]) + red(" not found."))
