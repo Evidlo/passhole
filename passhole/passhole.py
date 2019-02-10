@@ -552,13 +552,13 @@ def list_entries(args):
         for position, (name, kp) in enumerate(databases.items()):
             # print names for config-provided databases
             if len(databases) > 1:
-                print('[{}]{}'.format(
+                print('{}[{}]{}'.format(
+                    '' if position == 0 else '\n',
                     bold(green(name)),
                     ' (default)' if position == 0 else ''
                 ))
             list_items(kp.root_group, "", show_branches=False)
 
-            print()
     # print specific database
     else:
         kp = get_database(databases, args.path)
@@ -577,12 +577,6 @@ def grep(args):
     databases = open_databases(**vars(args))
 
     for position, (name, kp) in enumerate(databases.items()):
-        # print names for config-provided databases
-        if len(databases) > 1:
-            print('[{}]{}'.format(
-                bold(green(name)),
-                ' (default)' if position == 0 else ''
-            ))
         flags = 'i' if args.i else None
         log.debug("Searching database for pattern: {}".format(args.pattern))
 
@@ -594,10 +588,15 @@ def grep(args):
 
         entries = kp.find_entries(string={args.field: args.pattern}, regex=True, flags=flags)
 
+        # print names for config-provided databases
+        if len(databases) > 1 and len(entries) > 0:
+            print('{}[{}]{}'.format(
+                '' if position == 0 else '\n',
+                bold(green(name)),
+                ' (default)' if position == 0 else ''
+            ))
         for entry in entries:
             print(entry.path)
-
-        print()
 
 
 def decompose_path(path):
