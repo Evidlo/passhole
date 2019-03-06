@@ -1,15 +1,7 @@
 from setuptools import setup
 from passhole import version
-from passhole.passhole import default_config
-import passhole
 import shutil
 import os
-
-if not os.path.exists(default_config):
-    shutil.copy(
-        os.path.join(os.path.dirname(os.path.realpath(passhole.__file__)), 'passhole.ini'),
-        default_config
-    )
 
 setup(
     name='passhole',
@@ -31,10 +23,11 @@ setup(
         "pykeepass",
         "colorama",
         "pygpgme",
-        "future"
+        "future",
+        "pygpgme"
     ],
     data_files=[
-        ('share/man/man1', ['passhole.1']),
+        ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),
     ],
     classifiers=[
         "Programming Language :: Python :: 2",

@@ -42,7 +42,13 @@ Setup
    pip install passhole
    ph init
 
-`libgpgme-dev` must also be installed.
+These packages must be installed prior:
+
+**Ubuntu/Debian** - ``gcc libgpgme-dev python3-dev``
+
+**Fedora** - ``gcc libgpgme-devel python3-devel``
+
+**Arch** - ``gcc gpgme python3``
 
 Example Usage
 --------------

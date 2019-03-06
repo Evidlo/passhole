@@ -30,11 +30,13 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 default_config = os.path.expanduser('~/.config/passhole.ini')
+default_database = os.path.expanduser('~/.passhole.kdbx')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
 wordlist_file = os.path.join(base_dir, 'wordlist.txt')
 template_database_file = os.path.join(base_dir, 'blank.kdbx')
+template_config_file = os.path.join(base_dir, 'passhole.ini')
 
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
@@ -121,10 +123,14 @@ def split_db_prefix(path):
         return None, path
 
 
-
 def init_database(args):
     """Create database"""
     from pykeepass.pykeepass import PyKeePass
+
+    # install config if it doesn't exist
+    if not os.path.exists(default_config):
+        print("Creating config at {}".format(bold(default_config)))
+        shutil.copy(template_config_file, default_config)
 
     # create database if it doesn't exist
     if not os.path.exists(args.database):
@@ -369,8 +375,8 @@ def open_databases(
     # otherwise, load each database in config
     else:
         if not os.path.exists(config):
-                log.error(red("No config found at ") + bold(config))
-                sys.exit()
+            log.error(red("No config found at ") + bold(config))
+            sys.exit()
 
         c = ConfigParser()
         c.read(config)
@@ -880,7 +886,7 @@ def create_parser():
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
-    parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
+    parser.add_argument('--database', metavar='PATH', type=str, default=default_database, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
