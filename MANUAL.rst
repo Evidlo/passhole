@@ -123,7 +123,7 @@ default: True
 Multiple Databases
 ==================
 
-Multiple databases may be specified in the config.  Prefix group or entry paths with **@[Name]/**, where *[Name]* is the database name given in the config.  A path with no prefix is assumed to be the default database.
+All commands support multiple databases.  Prefix group or entry paths with **@[Name]/**, where *[Name]* is the database name given in the config.  A path with no prefix is assumed to be the default database.
 
 .. code:: bash
 
@@ -132,6 +132,21 @@ Multiple databases may be specified in the config.  Prefix group or entry paths 
 
    # list the test database
    $ ph ls @test/
+
+More databases may be added using the init command or manually specified in the config:
+
+.. code::
+
+    [test]
+    ### Path to database (required)
+    database: /path/to/test.kdbx
+    ### Path to keyfile.  if absent, assume no keyfile
+    keyfile: /path/to/test.key
+    ### Does the database have a password?
+    # no-password: True
+    ### Path to password cache.  If absent, don't cache password.
+    ### Must be unique for each database
+    cache: ~/.cache/test_cache
 
 
 Python Scripts
