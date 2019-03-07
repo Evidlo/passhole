@@ -22,6 +22,7 @@ import logging
 import argparse
 from configparser import ConfigParser
 from collections import OrderedDict
+from construct.core import ChecksumError
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -361,6 +362,9 @@ def open_databases(
             log.error(red("Password or keyfile incorrect"))
             if os.path.exists(cache):
                 log.error(red("Try clearing the cache at ") + bold(cache))
+            sys.exit()
+        except ChecksumError:
+            log.error(red("Invalid credentials for database ") + bold(database))
             sys.exit()
 
         return kp
