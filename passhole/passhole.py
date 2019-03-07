@@ -31,7 +31,8 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 default_config = os.path.expanduser('~/.config/passhole.ini')
-default_database = os.path.expanduser('~/.passhole.kdbx')
+default_database = os.path.expanduser('~/.{}.kdbx')
+default_keyfile = os.path.expanduser('~/.{}.key')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
@@ -128,61 +129,118 @@ def init_database(args):
     """Create database"""
     from pykeepass.pykeepass import PyKeePass
 
-    # install config if it doesn't exist
-    if not os.path.exists(default_config):
-        print("Creating config at {}".format(bold(default_config)))
-        shutil.copy(template_config_file, default_config)
+    # ----- setup config -----
 
-    # create database if it doesn't exist
-    if not os.path.exists(args.database):
-        print("Enter your desired database password")
-        password = getpass(green('Password: '))
-        password_confirm = getpass(green('Confirm: '))
+    c = ConfigParser()
+    if os.path.exists(args.config):
+        c.read(args.config)
 
-        if not password == password_confirm:
-            log.error(red("Passwords do not match"))
-            sys.exit()
+    if args.name is None:
+        database_name = editable_input(
+            "Please enter a name for the database (no spaces): ",
+            "passhole"
+        )
+    else:
+        database_name = args.name
 
-        print("Creating database at {}".format(bold(args.database)))
-        shutil.copy(template_database_file, args.database)
+    if database_name in c.sections():
+        log.error(
+            red("There is already a database named ") + bold(database_name) +
+            red(" in ") + bold(args.config)
+        )
+        sys.exit()
+    else:
+        c.add_section(database_name)
 
-        use_keyfile = editable_input("Would you like to generate a keyfile? (Y/n): ")
-        # dont use a keyfile
-        if use_keyfile == 'n':
-            keyfile = None
-        # generate a random AES256 keyfile
-        else:
-            keyfile = keyfile_path if not args.keyfile else args.keyfile
+    if not os.path.exists(args.config):
+        c.set(database_name, 'default', 'True')
 
-            log.debug("Looking for keyfile at {}".format(keyfile))
-            if os.path.exists(keyfile):
-                print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
-                sys.exit()
+    # ----- validate path -----
 
-            with open(keyfile, 'w') as f:
-                contents = '''
-                <?xml version="1.0" encoding="UTF-8"?>
-                <KeyFile>
-                    <Meta><Version>1.00</Version></Meta>
-                    <Key><Data>{}</Data></Key>
-                </KeyFile>
-                '''
-                log.debug("keyfile contents {}".format(contents))
-                f.write(contents.format(b64encode(os.urandom(32)).decode()))
-
-        # create database
-        kp = PyKeePass(args.database, password='password')
-        kp.password = password
-        kp.keyfile = keyfile
-        kp.save()
-        # create password cache
-        if password and args.cache is not None:
-            create_password_cache(args.cache, password, args.gpgkey)
+    if args.database is None:
+        database_path = editable_input(
+            "Desired database path: ",
+            default_database.format(database_name)
+        )
+    else:
+        database_path = args.database
 
     # quit if database already exists
-    else:
-        log.error(red("Found existing file at ") + bold(args.database))
+    if os.path.exists(database_path):
+        log.error(red("Found database at ") + bold(database_path))
         sys.exit()
+    else:
+        c.set(database_name, 'database', database_path)
+
+    # ----- set password -----
+
+    if args.no_password:
+        password = None
+        c.set(database_name, 'no-password', 'True')
+    else:
+        use_password = editable_input("Would you like the database to be password protected? (Y/n): ")
+        if use_password == 'n':
+            password = None
+            c.set(database_name, 'no-password', 'True')
+        else:
+            print("Enter your desired database password")
+            password = getpass(green('Password: '))
+            password_confirm = getpass(green('Confirm: '))
+
+            if not password == password_confirm:
+                log.error(red("Passwords do not match"))
+                sys.exit()
+
+    # ----- create keyfile -----
+
+    if args.keyfile is None:
+        use_keyfile = editable_input("Would you like to use a keyfile? (Y/n): ")
+        if use_keyfile == 'n':
+            keyfile = None
+        else:
+            keyfile = default_keyfile.format(database_name)
+    else:
+        keyfile = args.keyfile
+
+    # generate a random AES256 keyfile
+    if keyfile is not None:
+        c.set(database_name, 'keyfile', keyfile)
+
+        log.debug("Looking for keyfile at {}".format(keyfile))
+        if os.path.exists(keyfile):
+            print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
+            sys.exit()
+
+        with open(keyfile, 'w') as f:
+            contents = '''
+            <?xml version="1.0" encoding="UTF-8"?>
+            <KeyFile>
+                <Meta><Version>1.00</Version></Meta>
+                <Key><Data>{}</Data></Key>
+            </KeyFile>
+            '''
+            log.debug("keyfile contents {}".format(contents))
+            f.write(contents.format(b64encode(os.urandom(32)).decode()))
+
+    # ----- create database -----
+
+    # create database
+    print("Creating database at {}".format(bold(database_path)))
+    #FIXME: use os.mkdirs(os.path.dirname(database_path), exist_ok=True)
+    shutil.copy(template_database_file, database_path)
+
+    kp = PyKeePass(database_path, password='password')
+    kp.password = password
+    kp.keyfile = keyfile
+    kp.save()
+    # create password cache
+    if password and args.cache is not None:
+        create_password_cache(args.cache, password, args.gpgkey)
+
+    print("Creating config at {}".format(bold(args.config)))
+    #FIXME: use os.mkdirs(os.path.dirname(args.config), exist_ok=True)
+    with open(args.config, 'w') as f:
+        c.write(f)
 
 
 def create_password_cache(cache, password, fingerprint):
@@ -247,7 +305,7 @@ def open_databases(
     Parameters
     ----------
     database : str, optional
-        path to create database
+        path to database (don't read databases from config if given)
     keyfile : str, optional
         path to keyfile.  if not given, assume database has no keyfile
     cache : str, optional
@@ -343,13 +401,8 @@ def open_databases(
                         sys.exit()
                     password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-                if password:
-                    if cache is not None:
-                        create_password_cache(cache, password, gpgkey)
-
-                else:
-                    log.error(red("No password given"))
-                    sys.exit()
+                if cache is not None:
+                    create_password_cache(cache, password, gpgkey)
 
         log.debug("opening {} with password:{} and keyfile:{}".format(
             database,
@@ -383,6 +436,7 @@ def open_databases(
             sys.exit()
 
         c = ConfigParser()
+        log.debug("reading config from {}".format(config))
         c.read(config)
 
         has_default = False
@@ -394,6 +448,10 @@ def open_databases(
                 log.error(bold('database') + red(' option is required'))
                 sys.exit()
 
+            # add a 'default' key for the default database
+            if bool(s.get('default')):
+                has_default = True
+
             kp = open_database(
                 section,
                 s.get('database'),
@@ -403,16 +461,14 @@ def open_databases(
                 s.get('gpgkey')
             )
 
-            # add a 'default' key for the default database
+            # insert default database at position 0
             if bool(s.get('default')):
                 databases.insert(0, (section, kp))
-                has_default = True
             else:
                 databases.append((section, kp))
 
         if not has_default:
             log.warning("No default database specified in config")
-
 
     return OrderedDict(databases)
 
@@ -562,9 +618,9 @@ def list_entries(args):
         for position, (name, kp) in enumerate(databases.items()):
             # print names for config-provided databases
             if len(databases) > 1:
-                print('{}[{}]{}'.format(
+                print('{}{}{}'.format(
                     '' if position == 0 else '\n',
-                    bold(green(name)),
+                    bold(green('@' + name)),
                     ' (default)' if position == 0 else ''
                 ))
             list_items(kp.root_group, "", show_branches=False)
@@ -800,7 +856,8 @@ def dump(args):
 
     from lxml import etree
 
-    kp = open_database(**vars(args))
+    databases = open_databases(**vars(args))
+    kp = databases[args.name]
 
     print(
         etree.tostring(
@@ -882,15 +939,17 @@ def create_parser():
 
     # process args for `init` command
     init_parser = subparsers.add_parser('init', help="initialize a new database")
+    init_parser.add_argument('--name', type=str, help="name of database to initialize")
     init_parser.set_defaults(func=init_database)
 
     # process args for `dump` command
     dump_parser = subparsers.add_parser('dump', help="pretty print database XML to console")
+    dump_parser.add_argument('name', type=str, help="name of database to dump")
     dump_parser.set_defaults(func=dump)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
-    parser.add_argument('--database', metavar='PATH', type=str, default=default_database, help="specify database path")
+    parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
