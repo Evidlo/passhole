@@ -11,12 +11,13 @@ Passhole
 
 .. image:: https://i.imgur.com/lWLgbo3.gif 
 
+- `Manual`_
 - `Features`_
 - `Setup`_
 - `Example Usage`_
-- `Example i3 Keybindings`_
-- `Troubleshooting GPG Keys`_
-- `Manual`_
+- `Example i3wm Keybindings`_
+-  Troubleshooting GPG Keys`_
+- `Testing and Development`_
 
 
 Features
@@ -99,7 +100,7 @@ Example Usage
    >>> ph show social/twitter --field password
    inns.ambien.travelling.throw.force
 
-Example i3 Keybindings
+Example i3wm Keybindings
 ----------------------
 
 .. code:: bash
@@ -118,6 +119,32 @@ Troubleshooting GPG Keys
 
    gpg --export | gpg2 --import
    gpg --export-secret-keys | gpg2 --import
+
+Testing and Development
+-----------------------
+
+Running tests
+
+.. code:: bash
+
+   # from repo root dir:
+   python test/tests.py
+
+Isolated install in Docker
+
+.. code:: bash
+
+   # arch
+   make install_arch
+   # debian
+   make install_debian
+
+Building manpage and packaging
+
+.. code:: bash
+
+   make man
+   make dist
 
 See also
 --------

@@ -138,6 +138,8 @@ More databases may be added using the init command or manually specified in the 
 .. code::
 
     [test]
+    ### Use this database as the default
+    # default: True
     ### Path to database (required)
     database: /path/to/test.kdbx
     ### Path to keyfile.  if absent, assume no keyfile

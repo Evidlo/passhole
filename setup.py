@@ -30,7 +30,6 @@ setup(
         ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),
     ],
     classifiers=[
-        "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
     ]
 )
