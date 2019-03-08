@@ -31,6 +31,7 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 default_config = os.path.expanduser('~/.config/passhole.ini')
+#TODO: use ~/.local/passhole/
 default_database = os.path.expanduser('~/.{}.kdbx')
 default_keyfile = os.path.expanduser('~/.{}.key')
 
@@ -742,8 +743,17 @@ def add(args):
                 parent_group, child_name, username, password, url
             )
         )
-        kp.add_entry(parent_group, child_name, username, password, url=url)
+        entry = kp.add_entry(parent_group, child_name, username, password, url=url)
 
+        # set custom fields
+        if args.fields is not None:
+            for field in args.fields.split(','):
+                # capitalize reserved fields
+                field = reserved_fields.get(field, field).strip()
+                value = editable_input(
+                    green("{}: ".format(field)),
+                )
+                entry._set_string_field(field, value)
     kp.save()
 
 
@@ -902,6 +912,7 @@ def create_parser():
     add_parser.add_argument('-a', '--alphanumeric', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric password")
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
     add_parser.add_argument('--append', metavar='STR', type=str, help="append string to generated password")
+    add_parser.add_argument('--fields', metavar='FIELD1,...', type=str, help="comma separated list of custom fields")
     add_parser.set_defaults(func=add)
 
     # process args for `remove` command

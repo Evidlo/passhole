@@ -24,8 +24,8 @@ show [-h] [--field FIELD] PATH
 type [-h] [--tabbed] [--username] [--xdotool] PROG
     Automatically type out the password as if the user had typed it on the keyboard, where *PROG* is a dmenu-like program for selecting an entry.  This is useful when you want to automatically fill a selected password field in any application.  Use the --tabbed option to type out the username then password, separated by a tab.  Use the --username option to show entry username in parenthesis during selection.  Use the --xdotool option to use xdotool instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.
   
-add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] [--append STR] PATH
-    Add a new entry/group to the database, where *PATH* is the full path to the group or entry.  Use -w, -a, or -s to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  *LENGTH* defaults to 5 words for -w and 32 characters for -a and -s unless otherwise specified.  Use --append to append *STR* to the end of the generated password to meet specific password requirements.
+add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] [--append STR] [--fields FIELD1,...] PATH
+    Add a new entry/group to the database, where *PATH* is the full path to the group or entry.  Use -w, -a, or -s to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  *LENGTH* defaults to 5 words for -w and 32 characters for -a and -s unless otherwise specified.  Use --append to append *STR* to the end of the generated password to meet specific password requirements.  Use --fields to specify a comma separated list of custom fields to prompt for during entry creation.
   
 .. _correct horse battery staple: http://xkcd.com/936
 
