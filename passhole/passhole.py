@@ -31,9 +31,9 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 default_config = os.path.expanduser('~/.config/passhole.ini')
-#TODO: use ~/.local/passhole/
-default_database = os.path.expanduser('~/.{}.kdbx')
-default_keyfile = os.path.expanduser('~/.{}.key')
+default_database = os.path.expanduser('~/.local/passhole/{}.kdbx')
+default_keyfile = os.path.expanduser('~/.local/passhole/{}.key')
+default_cache = os.path.expanduser('~/.cache/passhole/{}.key')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
@@ -71,9 +71,22 @@ def editable_input(prompt, prefill=None):
         readline.insert_text(prefill)
         readline.redisplay()
     readline.set_pre_input_hook(hook)
-    result = input(prompt)
+    result = input(green(prompt + ': '))
     readline.set_pre_input_hook()
     return result
+def boolean_input(prompt, default=True):
+    result = editable_input(
+        prompt + ' (Y/n)' if default else prompt + ' (y/N)'
+    )
+    if result.lower() == 'y':
+        return True
+    elif result.lower() == 'n':
+        return False
+    elif result == '':
+        return default
+    else:
+        # ask again
+        return boolean_input(prompt, default)
 
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
@@ -137,10 +150,7 @@ def init_database(args):
         c.read(args.config)
 
     if args.name is None:
-        database_name = editable_input(
-            "Please enter a name for the database (no spaces): ",
-            "passhole"
-        )
+        database_name = editable_input("Database name (no spaces)", "passhole")
     else:
         database_name = args.name
 
@@ -156,11 +166,11 @@ def init_database(args):
     if not os.path.exists(args.config):
         c.set(database_name, 'default', 'True')
 
-    # ----- validate path -----
+    # ----- database prompt -----
 
     if args.database is None:
         database_path = editable_input(
-            "Desired database path: ",
+            "Desired database path",
             default_database.format(database_name)
         )
     else:
@@ -173,18 +183,17 @@ def init_database(args):
     else:
         c.set(database_name, 'database', database_path)
 
-    # ----- set password -----
+    # ----- password prompt -----
 
     if args.no_password:
         password = None
         c.set(database_name, 'no-password', 'True')
     else:
-        use_password = editable_input("Would you like the database to be password protected? (Y/n): ")
+        use_password = boolean_input("Password protect database?")
         if use_password == 'n':
             password = None
             c.set(database_name, 'no-password', 'True')
         else:
-            print("Enter your desired database password")
             password = getpass(green('Password: '))
             password_confirm = getpass(green('Confirm: '))
 
@@ -192,26 +201,53 @@ def init_database(args):
                 log.error(red("Passwords do not match"))
                 sys.exit()
 
-    # ----- create keyfile -----
+    # ----- keyfile prompt -----
 
     if args.keyfile is None:
-        use_keyfile = editable_input("Would you like to use a keyfile? (Y/n): ")
+        use_keyfile = boolean_input("Use a keyfile?")
         if use_keyfile == 'n':
             keyfile = None
         else:
-            keyfile = default_keyfile.format(database_name)
+            keyfile = editable_input("Desired keyfile path",
+                default_keyfile.format(database_name)
+            )
+        c.set(database_name, 'keyfile', keyfile)
     else:
         keyfile = args.keyfile
-
-    # generate a random AES256 keyfile
-    if keyfile is not None:
         c.set(database_name, 'keyfile', keyfile)
+
+    # ----- cache prompt -----
+
+    if args.cache is None:
+        if password is not None and boolean_input("Use password caching?"):
+            cache = editable_input(
+                "Desired cache path",
+                default_cache.format(database_name)
+            )
+            c.set(database_name, 'cache', cache)
+        else:
+            cache = None
+    else:
+        cache = args.cache
+        c.set(database_name, 'cache', cache)
+
+    # ----- create cache/keyfile/database/config -----
+
+    # create cache
+    if cache is not None:
+        print("Creating cache at " + bold(cache))
+        create_password_cache(cache, password, args.gpgkey)
+
+    # create keyfile
+    if keyfile is not None:
 
         log.debug("Looking for keyfile at {}".format(keyfile))
         if os.path.exists(keyfile):
             print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
             sys.exit()
 
+        print("Creating keyfile at " + bold(keyfile))
+        os.makedirs(os.path.dirname(keyfile), exist_ok=True)
         with open(keyfile, 'w') as f:
             contents = '''
             <?xml version="1.0" encoding="UTF-8"?>
@@ -223,23 +259,19 @@ def init_database(args):
             log.debug("keyfile contents {}".format(contents))
             f.write(contents.format(b64encode(os.urandom(32)).decode()))
 
-    # ----- create database -----
-
     # create database
     print("Creating database at {}".format(bold(database_path)))
-    #FIXME: use os.mkdirs(os.path.dirname(database_path), exist_ok=True)
+    os.makedirs(os.path.dirname(database_path), exist_ok=True)
     shutil.copy(template_database_file, database_path)
 
     kp = PyKeePass(database_path, password='password')
     kp.password = password
     kp.keyfile = keyfile
     kp.save()
-    # create password cache
-    if password and args.cache is not None:
-        create_password_cache(args.cache, password, args.gpgkey)
 
+    # create config
     print("Creating config at {}".format(bold(args.config)))
-    #FIXME: use os.mkdirs(os.path.dirname(args.config), exist_ok=True)
+    os.makedirs(os.path.dirname(args.config), exist_ok=True)
     with open(args.config, 'w') as f:
         c.write(f)
 
@@ -265,13 +297,14 @@ def create_password_cache(cache, password, fingerprint):
     else:
         log.error(
             red("no GPG keys found. Try ") +
-            bold("gpg2 --gen-key") + red(" or omit cache option")
+            bold("gpg --gen-key") + red("(gpg >= 2.0) or don't cache password")
         )
         sys.exit()
 
     # encrypt password and write to cache file
     infile = BytesIO(password.encode('utf8'))
     try:
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
         with open(cache, 'wb') as outfile:
             gpg.encrypt([selected_key], 0, infile, outfile)
     except gpgme.GpgmeError as e:
@@ -703,7 +736,7 @@ def add(args):
     # create a new entry
     else:
         no_entry(kp, args.path)
-        username = editable_input(green('Username: '))
+        username = editable_input('Username')
 
         # use urandom for number generation
         rng = random.SystemRandom()
@@ -736,7 +769,7 @@ def add(args):
         if args.append:
             password += args.append
 
-        url = editable_input(green('URL: '))
+        url = editable_input('URL')
 
         log.debug(
             'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
@@ -750,9 +783,7 @@ def add(args):
             for field in args.fields.split(','):
                 # capitalize reserved fields
                 field = reserved_fields.get(field, field).strip()
-                value = editable_input(
-                    green("{}: ".format(field)),
-                )
+                value = editable_input(field)
                 entry._set_string_field(field, value)
     kp.save()
 
@@ -790,10 +821,7 @@ def edit(args):
     # edit specific field
     if args.field:
         field = get_field(entry, args.field)
-        value = editable_input(
-            green("{}: ".format(field)),
-            entry._get_string_field(field)
-        )
+        value = editable_input(field, entry._get_string_field(field))
         entry._set_string_field(field, value)
     # add/set a field
     elif args.set:
@@ -807,10 +835,7 @@ def edit(args):
     # otherwise, edit all fields
     else:
         for field in entry._get_string_field_keys():
-            value = editable_input(
-                green("{}: ".format(field)),
-                entry._get_string_field(field)
-            )
+            value = editable_input(field, entry._get_string_field(field))
             entry._set_string_field(field, value)
 
     kp.save()
