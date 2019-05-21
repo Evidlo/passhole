@@ -504,6 +504,7 @@ def open_databases(
         if not has_default:
             log.warning("No default database specified in config")
 
+    log.debug('databases: {}'.format(databases))
     return OrderedDict(databases)
 
 
@@ -980,7 +981,7 @@ def create_parser():
 
     # process args for `dump` command
     dump_parser = subparsers.add_parser('dump', help="pretty print database XML to console")
-    dump_parser.add_argument('name', type=str, help="name of database to dump")
+    dump_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to dump")
     dump_parser.set_defaults(func=dump)
 
     # optional arguments
