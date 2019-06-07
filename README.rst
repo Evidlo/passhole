@@ -16,7 +16,7 @@ Passhole
 - `Setup`_
 - `Example Usage`_
 - `Example i3wm Keybindings`_
--  Troubleshooting GPG Keys`_
+- `Troubleshooting GPG Keys`_
 - `Testing and Development`_
 
 
@@ -151,7 +151,9 @@ See also
 - `keepmenu`_
 - `kpcli`_
 - `keepassxc`_
+- `kdbxpasswordpwned`_
 
 .. _keepmenu: https://github.com/firecat53/keepmenu/
 .. _kpcli: http://kpcli.sourceforge.net/
 .. _keepassxc: https://keepassxc.org/
+.. _kdbxpasswordpwned: https://github.com/fopina/kdbxpasswordpwned
