@@ -22,7 +22,6 @@ import logging
 import argparse
 from configparser import ConfigParser
 from collections import OrderedDict
-from construct.core import ChecksumError
 
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -357,6 +356,7 @@ def open_databases(
     Ordered dictionary of PyKeePass objects keyed by name, first is default
     """
     from pykeepass.pykeepass import PyKeePass
+    from construct.core import ChecksumError
 
     def open_database(name, database, keyfile, cache, no_password, gpgkey):
         """Open a database and return KeePass object"""
