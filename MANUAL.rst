@@ -157,8 +157,8 @@ The *open_databases* function is available for import for conveniently opening y
 
 .. code:: python
 
-   from passhole.passhole import open_database
-   kp = open_database()
+   from passhole.passhole import open_databases
+   kp = list(open_databases().values()[0]
 
 
 Examples

@@ -31,7 +31,7 @@ Features
 
 .. _correct horse battery staple: http://xkcd.com/936
 
-See below for examples and the `manual`_ for a complete list of commands and options.
+See below for examples and the `manual`_ (or ``man passhole``) for a complete list of commands and options.
 
 .. _manual: MANUAL.rst
 
