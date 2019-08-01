@@ -817,27 +817,43 @@ def edit(args):
     databases = open_databases(**vars(args))
     kp = get_database(databases, args.path)
 
-    entry = get_entry(kp, args.path)
+    # edit group name
+    if args.path.endswith('/'):
+        group = get_group(kp, args.path)
 
-    # edit specific field
-    if args.field:
-        field = get_field(entry, args.field)
-        value = editable_input(field, entry._get_string_field(field))
-        entry._set_string_field(field, value)
-    # add/set a field
-    elif args.set:
-        field = reserved_fields.get(args.set[0], args.set[0])
-        entry._set_string_field(field, args.set[1])
-    # remove a field
-    elif args.remove:
-        field = get_field(entry, args.remove)
-        results = entry._element.xpath('String/Key[text()="{}"]/..'.format(field))
-        entry._element.remove(results[0])
-    # otherwise, edit all fields
+        if args.set:
+            field = args.set[0]
+            if field.lower() != 'name':
+                log.error(red("Only 'name' is supported for Group FIELD"))
+                sys.exit()
+            group.name = args.set[1]
+        # otherwise, edit interactively
+        else:
+            value = editable_input('Name', group.name)
+            group.name = value
+
     else:
-        for field in entry._get_string_field_keys():
+        entry = get_entry(kp, args.path)
+
+        # edit specific field
+        if args.field:
+            field = get_field(entry, args.field)
             value = editable_input(field, entry._get_string_field(field))
             entry._set_string_field(field, value)
+        # add/set a field
+        elif args.set:
+            field = reserved_fields.get(args.set[0], args.set[0])
+            entry._set_string_field(field, args.set[1])
+        # remove a field
+        elif args.remove:
+            field = get_field(entry, args.remove)
+            results = entry._element.xpath('String/Key[text()="{}"]/..'.format(field))
+            entry._element.remove(results[0])
+        # otherwise, edit all fields interactively
+        else:
+            for field in entry._get_string_field_keys():
+                value = editable_input(field, entry._get_string_field(field))
+                entry._set_string_field(field, value)
 
     kp.save()
 
@@ -947,8 +963,8 @@ def create_parser():
     remove_parser.set_defaults(func=remove)
 
     # process args for `edit` command
-    edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry")
-    edit_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
+    edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry or group")
+    edit_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
     edit_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
     edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
