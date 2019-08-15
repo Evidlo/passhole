@@ -613,6 +613,8 @@ def show(args):
         print(green("URL: ") + (entry.url or ''))
         for field_name, field_value in entry.custom_properties.items():
             print(green("{}: ".format(field_name)) + str(field_value or ''))
+        print(green("Created: ") + entry.ctime.isoformat())
+        print(green("Modified: ") + entry.mtime.isoformat())
 
 
 def list_entries(args):
