@@ -108,9 +108,10 @@ def get_field(entry, field_input):
         log.error(red("No such field ") + bold(field_input))
         sys.exit()
     return field
-def get_database(databases, path):
+def get_database(databases, path=None, name=None):
     """Return database specified in path or return default if not given"""
-    name, _ = split_db_prefix(path)
+    if path is not None:
+        name, _ = split_db_prefix(path)
     # handle @ syntax
     if name is not None:
         if name not in databases.keys():
@@ -603,7 +604,7 @@ def show(args):
     # otherwise, show all fields
     else:
         print(green("Title: ") + (entry.title or ''))
-        print(green("Username: ") + (entry.username or ''))
+        print(green("UserName: ") + (entry.username or ''))
         print(
             green("Password: ") + Fore.RED + Back.RED +
             (entry.password or '') +
@@ -909,7 +910,7 @@ def dump(args):
     from lxml import etree
 
     databases = open_databases(**vars(args))
-    kp = databases[args.name]
+    kp = get_database(databases, name=args.name)
 
     print(
         etree.tostring(
