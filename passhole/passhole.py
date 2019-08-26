@@ -24,7 +24,7 @@ from configparser import ConfigParser
 from collections import OrderedDict
 
 
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(message)s')
 # hide INFO messages from pykeepass
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
@@ -188,27 +188,27 @@ def init_database(args):
         c.set(database_name, 'no-password', 'True')
     else:
         use_password = boolean_input("Password protect database?")
-        if use_password == 'n':
-            password = None
-            c.set(database_name, 'no-password', 'True')
-        else:
+        if use_password:
             password = getpass(green('Password: '))
             password_confirm = getpass(green('Confirm: '))
 
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
                 sys.exit()
+        else:
+            password = None
+            c.set(database_name, 'no-password', 'True')
 
     # ----- keyfile prompt -----
 
     if args.keyfile is None:
         use_keyfile = boolean_input("Use a keyfile?")
-        if use_keyfile == 'n':
-            keyfile = None
-        else:
+        if use_keyfile:
             keyfile = editable_input("Desired keyfile path",
                 default_keyfile.format(database_name)
             )
+        else:
+            keyfile = None
         c.set(database_name, 'keyfile', keyfile)
     else:
         keyfile = args.keyfile
@@ -241,7 +241,7 @@ def init_database(args):
     os.makedirs(os.path.dirname(database_path), exist_ok=True)
     shutil.copy(template_database_file, database_path)
 
-    from pykeepass_remote import PyKeePass
+    from pykeepass import PyKeePass
     kp = PyKeePass(database_path, password='password')
     kp.password = password
     kp.keyfile = keyfile
@@ -893,6 +893,7 @@ def main():
     if args.debug:
         print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
+        logging.getLogger('pykeepass_remote').setLevel(logging.DEBUG)
 
     args.func(args)
 
