@@ -20,11 +20,9 @@ setup(
     },
     install_requires=[
         "pynput",
-        "pykeepass",
+        "pykeepass_remote",
         "colorama",
-        "pygpgme",
-        "future",
-        "pygpgme"
+        "future"
     ],
     data_files=[
         ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),
