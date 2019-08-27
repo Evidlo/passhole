@@ -20,7 +20,7 @@ setup(
     },
     install_requires=[
         "pynput",
-        "pykeepass_remote",
+        "pykeepass_cache",
         "colorama",
         "future"
     ],

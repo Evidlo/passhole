@@ -34,7 +34,7 @@ default_database = os.path.expanduser('~/.local/passhole/{}.kdbx')
 default_keyfile = os.path.expanduser('~/.local/passhole/{}.key')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
-# taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
+# taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
 wordlist_file = os.path.join(base_dir, 'wordlist.txt')
 template_database_file = os.path.join(base_dir, 'blank.kdbx')
 template_config_file = os.path.join(base_dir, 'passhole.ini')
@@ -280,7 +280,7 @@ def open_databases(
     -------
     Ordered dictionary of PyKeePass objects keyed by name, first is default
     """
-    from pykeepass_remote.pykeepass_remote import PyKeePass, cached_databases
+    from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
     # from construct.core import ChecksumError
 
     def open_database(name, database, keyfile, no_password, gpgkey):
@@ -893,7 +893,7 @@ def main():
     if args.debug:
         print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
-        logging.getLogger('pykeepass_remote').setLevel(logging.DEBUG)
+        logging.getLogger('pykeepass_cache').setLevel(logging.DEBUG)
 
     args.func(args)
 
