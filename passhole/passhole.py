@@ -132,9 +132,15 @@ def split_db_prefix(path):
         if '/' in path:
             return path.lstrip('@').split('/', 1)
         else:
-            return path.lstrip('@'), ''
+            # return path.lstrip('@'), ''
+            return path.lstrip('@'), None
     else:
         return None, path
+# def join_db_prefix(prefix, path):
+#     if prefix is None:
+#         return path
+#     else:
+#         return '@{}/{}'.format(prefix, path)
 
 
 def init_database(args):
@@ -552,9 +558,13 @@ def list_entries(args):
     # print specific database
     else:
         kp = get_database(databases, args.path)
+        # FIXME: write a function: parse_path -> type (db, group, entry)
         # if group, list items
         if args.path.endswith('/'):
             list_items(get_group(kp, args.path), "", show_branches=False)
+        # if db, list items in root group
+        elif args.path.startswith('@') and '/' not in args.path:
+            list_items(kp.root_group, "", show_branches=False)
         # if entry, print entry contents
         else:
             args.field = None
