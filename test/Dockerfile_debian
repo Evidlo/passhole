@@ -22,4 +22,4 @@ RUN mkdir /root/.config
 RUN mkdir /root/.cache
 
 RUN pip3 install .
-RUN bash
+RUN bash -o vi

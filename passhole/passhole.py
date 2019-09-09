@@ -13,7 +13,7 @@ from colorama import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
 import readline
-import gpgme
+# import gpgme
 import random
 import os
 import sys
@@ -24,7 +24,7 @@ from configparser import ConfigParser
 from collections import OrderedDict
 
 
-logging.basicConfig(level=logging.INFO, format='%(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(message)s')
 # hide INFO messages from pykeepass
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
@@ -32,10 +32,9 @@ log = logging.getLogger(__name__)
 default_config = os.path.expanduser('~/.config/passhole.ini')
 default_database = os.path.expanduser('~/.local/passhole/{}.kdbx')
 default_keyfile = os.path.expanduser('~/.local/passhole/{}.key')
-default_cache = os.path.expanduser('~/.cache/passhole/{}.key')
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
-# taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases 
+# taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
 wordlist_file = os.path.join(base_dir, 'wordlist.txt')
 template_database_file = os.path.join(base_dir, 'blank.kdbx')
 template_config_file = os.path.join(base_dir, 'passhole.ini')
@@ -44,7 +43,7 @@ alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
 symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 
-gpg = gpgme.Context()
+# gpg = gpgme.Context()
 
 reserved_fields = {
     'username':'UserName',
@@ -134,14 +133,20 @@ def split_db_prefix(path):
         if '/' in path:
             return path.lstrip('@').split('/', 1)
         else:
-            return path.lstrip('@'), ''
+            # return path.lstrip('@'), ''
+            return path.lstrip('@'), None
     else:
         return None, path
+# def join_db_prefix(prefix, path):
+#     if prefix is None:
+#         return path
+#     else:
+#         return '@{}/{}'.format(prefix, path)
 
 
 def init_database(args):
     """Create database"""
-    from pykeepass.pykeepass import PyKeePass
+    # from pykeepass.pykeepass import PyKeePass
 
     # ----- setup config -----
 
@@ -190,54 +195,33 @@ def init_database(args):
         c.set(database_name, 'no-password', 'True')
     else:
         use_password = boolean_input("Password protect database?")
-        if use_password == 'n':
-            password = None
-            c.set(database_name, 'no-password', 'True')
-        else:
+        if use_password:
             password = getpass(green('Password: '))
             password_confirm = getpass(green('Confirm: '))
 
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
                 sys.exit()
+        else:
+            password = None
+            c.set(database_name, 'no-password', 'True')
 
     # ----- keyfile prompt -----
 
     if args.keyfile is None:
         use_keyfile = boolean_input("Use a keyfile?")
-        if use_keyfile == 'n':
-            keyfile = None
-        else:
+        if use_keyfile:
             keyfile = editable_input("Desired keyfile path",
                 default_keyfile.format(database_name)
             )
-        c.set(database_name, 'keyfile', keyfile)
+            c.set(database_name, 'keyfile', keyfile)
+        else:
+            keyfile = None
     else:
         keyfile = args.keyfile
         c.set(database_name, 'keyfile', keyfile)
 
-    # ----- cache prompt -----
-
-    if args.cache is None:
-        if password is not None and boolean_input("Use password caching?"):
-            cache = editable_input(
-                "Desired cache path",
-                default_cache.format(database_name)
-            )
-            c.set(database_name, 'cache', cache)
-        else:
-            cache = None
-    else:
-        cache = args.cache
-        c.set(database_name, 'cache', cache)
-
-    # ----- create cache/keyfile/database/config -----
-
-    # create cache
-    if cache is not None:
-        print("Creating cache at " + bold(cache))
-        create_password_cache(cache, password, args.gpgkey)
-
+    # ----- create keyfile/database/config -----
     # create keyfile
     if keyfile is not None:
 
@@ -264,6 +248,7 @@ def init_database(args):
     os.makedirs(os.path.dirname(database_path), exist_ok=True)
     shutil.copy(template_database_file, database_path)
 
+    from pykeepass import PyKeePass
     kp = PyKeePass(database_path, password='password')
     kp.password = password
     kp.keyfile = keyfile
@@ -276,59 +261,9 @@ def init_database(args):
         c.write(f)
 
 
-def create_password_cache(cache, password, fingerprint):
-    """Cache database password to a gpg encrypted file"""
-
-    # get GPG key for creating cache
-    keys = list(gpg.keylist())
-    if keys:
-        # get the gpg key specified
-        if fingerprint:
-            log.debug("Selected fingerprint: {}".format(fingerprint))
-            try:
-                selected_key = gpg.get_key(fingerprint.replace(' ', ''))
-            except gpgme.GpgmeError:
-                log.error(red("Specified GPG key not found"))
-                sys.exit()
-        # otherwise get the first key
-        else:
-            selected_key = keys[0]
-
-    else:
-        log.error(
-            red("no GPG keys found. Try ") +
-            bold("gpg --gen-key") + red("(gpg >= 2.0) or don't cache password")
-        )
-        sys.exit()
-
-    # encrypt password and write to cache file
-    infile = BytesIO(password.encode('utf8'))
-    try:
-        os.makedirs(os.path.dirname(cache), exist_ok=True)
-        with open(cache, 'wb') as outfile:
-            gpg.encrypt([selected_key], 0, infile, outfile)
-    except gpgme.GpgmeError as e:
-        # gpgkey is not trusted
-        if e.code == gpgme.ERR_UNUSABLE_PUBKEY:
-            log.error(
-                red(
-                    "Your GPG key is untrusted.  Run " +
-                    bold("gpg2 --edit-key \"{}\" trust".format(selected_key.uids[0].name)) +
-                    red(" to change the trust level")
-                )
-            )
-            os.remove(cache)
-            sys.exit()
-        else:
-            raise e
-
-    infile.close()
-
-
 def open_databases(
         database=None,
         keyfile=None,
-        cache=None,
         no_password=False,
         gpgkey=None,
         config=default_config,
@@ -342,29 +277,24 @@ def open_databases(
         path to database (don't read databases from config if given)
     keyfile : str, optional
         path to keyfile.  if not given, assume database has no keyfile
-    cache : str, optional
-        path to create password cache.  if not given, don't use or create password cache
 
     Other Parameters
     ----------------
     no_password : bool, optional
         if True, assume database has no password
-    gpgkey : str, optional
-        GPG key fingerprint of GPG key to use when creating cache
 
     Returns
     -------
     Ordered dictionary of PyKeePass objects keyed by name, first is default
     """
-    from pykeepass.pykeepass import PyKeePass
-    from construct.core import ChecksumError
+    from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
+    # from construct.core import ChecksumError
 
-    def open_database(name, database, keyfile, cache, no_password, gpgkey):
+    def open_database(name, database, keyfile, no_password, gpgkey):
         """Open a database and return KeePass object"""
 
         database = os.path.expanduser(database) if database is not None else database
         keyfile = os.path.expanduser(keyfile) if keyfile is not None else keyfile
-        cache = os.path.expanduser(cache) if cache is not None else cache
 
         # check if database exists
         if not os.path.exists(database):
@@ -374,42 +304,21 @@ def open_databases(
             )
             sys.exit()
 
-        # if path of given keyfile doesn't exist
-        if keyfile is not None and  not os.path.exists(keyfile):
-            log.error(red("No keyfile found at ") + bold(keyfile))
-            sys.exit()
+        # if database is already open on server
+        opened_databases = cached_databases()
+        if database in opened_databases:
+            log.debug("opening {} from cache".format(database))
+            return opened_databases[database]
 
-        if no_password:
-            password = None
         else:
-            # retrieve password from cache
-            if cache is not None and os.path.exists(cache):
-                log.debug("Retrieving password from {}".format(cache))
-                outfile = BytesIO()
-                with open(cache, 'rb') as infile:
-                    try:
-                        gpg.decrypt(infile, outfile)
-                    except gpgme.GpgmeError as e:
-                        if e.code == gpgme.ERR_DECRYPT_FAILED:
-                            log.error(red("Could not decrypt cache"))
-                            sys.exit()
-                        elif e.code == gpgme.ERR_NO_SECKEY:
-                            log.error(
-                                red("No GPG secret key found.  Please generate a keypair using ") +
-                                bold("gpg2 --full-generate-key")
-                            )
-                            sys.exit()
-                        elif e.code == gpgme.ERR_CANCELED:
-                            sys.exit()
-                        else:
-                            raise e
+            # if path of given keyfile doesn't exist
+            if keyfile is not None and  not os.path.exists(keyfile):
+                log.error(red("No keyfile found at ") + bold(keyfile))
+                sys.exit()
 
-                password = outfile.getvalue().decode('utf8')
-                outfile.close()
-
-            # if no cache, prompt for password and save it to cache
+            if no_password:
+                password = None
             else:
-
                 if name is not None:
                     prompt = 'Enter password ({}):'.format(name)
                 else:
@@ -436,32 +345,19 @@ def open_databases(
                         sys.exit()
                     password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-                if cache is not None:
-                    create_password_cache(cache, password, gpgkey)
+            log.debug("opening {} with password:{} and keyfile:{}".format(
+                database,
+                str(password),
+                str(keyfile)
+            ))
 
-        log.debug("opening {} with password:{} and keyfile:{}".format(
-            database,
-            str(password),
-            str(keyfile)
-        ))
-        try:
-            kp = PyKeePass(database, password=password, keyfile=keyfile)
-        except IOError:
-            log.error(red("Password or keyfile incorrect"))
-            if os.path.exists(cache):
-                log.error(red("Try clearing the cache at ") + bold(cache))
-            sys.exit()
-        except ChecksumError:
-            log.error(red("Invalid credentials for database ") + bold(database))
-            sys.exit()
-
-        return kp
+            return PyKeePass(database, password=password, keyfile=keyfile)
 
     databases = []
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        kp = open_database(None, database, keyfile, cache, no_password, gpgkey)
+        kp = open_database(None, database, keyfile, no_password, gpgkey)
         databases.append((None, kp))
 
     # otherwise, load each database in config
@@ -491,7 +387,6 @@ def open_databases(
                 section,
                 s.get('database'),
                 s.get('keyfile'),
-                s.get('cache'),
                 s.get('no-password'),
                 s.get('gpgkey')
             )
@@ -557,7 +452,7 @@ def type_entries(args):
     kp = get_database(databases, selection_path)
     selected_entry = get_entry(kp, selection_path)
 
-    log.debug("selected_entry:{}".format(selected_entry))
+    # log.debug("selected_entry:{}".format(selected_entry))
 
     def call_xdotool(args):
         try:
@@ -666,9 +561,13 @@ def list_entries(args):
     # print specific database
     else:
         kp = get_database(databases, args.path)
+        # FIXME: write a function: parse_path -> type (db, group, entry)
         # if group, list items
         if args.path.endswith('/'):
             list_items(get_group(kp, args.path), "", show_branches=False)
+        # if db, list items in root group
+        elif args.path.startswith('@') and '/' not in args.path:
+            list_items(kp.root_group, "", show_branches=False)
         # if entry, print entry contents
         else:
             args.field = None
@@ -775,11 +674,11 @@ def add(args):
 
         url = editable_input('URL')
 
-        log.debug(
-            'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
-                parent_group, child_name, username, password, url
-            )
-        )
+        # log.debug(
+        #     'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
+        #         parent_group, child_name, username, password, url
+        #     )
+        # )
         entry = kp.add_entry(parent_group, child_name, username, password, url=url)
 
         # set custom fields
@@ -1007,7 +906,6 @@ def create_parser():
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
-    parser.add_argument('--cache', metavar='PATH', type=str, default=None, help="specify password cache")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
     parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
     parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify database path")
@@ -1024,6 +922,7 @@ def main():
     if args.debug:
         print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
+        logging.getLogger('pykeepass_cache').setLevel(logging.DEBUG)
 
     args.func(args)
 
