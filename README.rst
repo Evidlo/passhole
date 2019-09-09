@@ -16,7 +16,6 @@ Passhole
 - `Setup`_
 - `Example Usage`_
 - `Example i3wm Keybindings`_
-- `Troubleshooting GPG Keys`_
 - `Testing and Development`_
 
 
@@ -43,13 +42,6 @@ Setup
    pip install passhole
    ph init
 
-These packages must be installed prior:
-
-**Ubuntu/Debian** - ``gcc libgpgme-dev python3-dev``
-
-**Fedora** - ``gcc libgpgme-devel python3-devel``
-
-**Arch** - ``gcc gpgme python3``
 
 Example Usage
 --------------
@@ -101,7 +93,7 @@ Example Usage
    inns.ambien.travelling.throw.force
 
 Example i3wm Keybindings
-----------------------
+------------------------
 
 .. code:: bash
 
@@ -109,16 +101,6 @@ Example i3wm Keybindings
    bindsym $mod+p exec "ph type dmenu"
    # select entry using dmenu, then send username + password to keyboard
    bindsym $mod+Shift+p exec "ph type dmenu --tabbed"
-
-Troubleshooting GPG Keys
-------------------------
-
-``passhole`` uses ``gpg2`` to store your database password encrypted on disk to take advantage of the password caching features of ``gpg-agent``.  By default ``passhole`` will use the first GPG key on your keyring, but this can be overridden.  This key must have trust level 5 (ultimate) and should be created using ``gpg2``.  If you created your key with ``gpg``, you can export your keys to ``gpg2`` as shown below.
-
-.. code:: bash
-
-   gpg --export | gpg2 --import
-   gpg --export-secret-keys | gpg2 --import
 
 Testing and Development
 -----------------------

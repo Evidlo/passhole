@@ -213,9 +213,9 @@ def init_database(args):
             keyfile = editable_input("Desired keyfile path",
                 default_keyfile.format(database_name)
             )
+            c.set(database_name, 'keyfile', keyfile)
         else:
             keyfile = None
-        c.set(database_name, 'keyfile', keyfile)
     else:
         keyfile = args.keyfile
         c.set(database_name, 'keyfile', keyfile)

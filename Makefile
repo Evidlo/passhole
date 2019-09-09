@@ -26,16 +26,15 @@ pypi: dist man
 
 # ----- Docker -----
 
-.PHONY: test_install_arch
-install_arch:
+nocache_install_debian:
 	docker build \
-		-t "passhole:arch" \
-		-f test/Dockerfile_arch .
+		-t "passhole:debian" \
+		-f test/Dockerfile_debian . \
+		--build-arg CACHEBUST=$(date)
 	docker run \
-		-it "passhole:arch" \
+		-it "passhole:debian" \
 		/bin/bash
 
-.PHONY: test_install_debian
 install_debian:
 	docker build \
 		-t "passhole:debian" \

@@ -12,6 +12,7 @@ setup(
     author_email="evan@evanw.org",
     description="CLI KeePass client with dmenu support",
     long_description=open('README.rst').read(),
+    long_description_content_type='text/x-rst',
     license="GPLv3",
     keywords="keepass cli dmenu password store passwords manager rofi pykeepass libkeepass",
     url="https://github.com/evidlo/passhole",
