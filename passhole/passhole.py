@@ -265,7 +265,7 @@ def open_databases(
         database=None,
         keyfile=None,
         no_password=False,
-        gpgkey=None,
+        no_cache=False,
         config=default_config,
         **kwargs
 ):
@@ -290,11 +290,13 @@ def open_databases(
     from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
     # from construct.core import ChecksumError
 
-    def open_database(name, database, keyfile, no_password, gpgkey):
+    def open_database(name, database, keyfile, no_password, no_cache):
         """Open a database and return KeePass object"""
 
-        database = os.path.expanduser(database) if database is not None else database
-        keyfile = os.path.expanduser(keyfile) if keyfile is not None else keyfile
+        if database is not None:
+            database = os.path.abspath(os.path.expanduser(database))
+        if keyfile is not None:
+            keyfile = os.path.abspath(os.path.expanduser(keyfile))
 
         # check if database exists
         if not os.path.exists(database):
@@ -306,11 +308,13 @@ def open_databases(
 
         # if database is already open on server
         opened_databases = cached_databases()
-        if database in opened_databases:
+        log.debug("opened databases:" + str(opened_databases))
+        if database in opened_databases and not no_cache:
             log.debug("opening {} from cache".format(database))
             return opened_databases[database]
 
         else:
+            log.debug("{} not found in cache".format(database))
             # if path of given keyfile doesn't exist
             if keyfile is not None and  not os.path.exists(keyfile):
                 log.error(red("No keyfile found at ") + bold(keyfile))
@@ -351,14 +355,18 @@ def open_databases(
                 str(keyfile)
             ))
 
-            return PyKeePass(database, password=password, keyfile=keyfile)
+            if no_cache:
+                from pykeepass import PyKeePass as PyKeePass_nocache
+                return PyKeePass_nocache(database, password=password, keyfile=keyfile)
+            else:
+                return PyKeePass(database, password=password, keyfile=keyfile)
 
     databases = []
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        kp = open_database(None, database, keyfile, no_password, gpgkey)
-        databases.append((None, kp))
+        kp = open_database(database, database, keyfile, no_password, no_cache)
+        databases.append((database, kp))
 
     # otherwise, load each database in config
     else:
@@ -388,7 +396,7 @@ def open_databases(
                 s.get('database'),
                 s.get('keyfile'),
                 s.get('no-password'),
-                s.get('gpgkey')
+                s.get('no-cache')
             )
 
             # insert default database at position 0
@@ -907,7 +915,7 @@ def create_parser():
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
-    parser.add_argument('--gpgkey', metavar='FINGERPRINT', type=str, default=None, help="specify GPG key to use when caching database password")
+    parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
     parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify database path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 

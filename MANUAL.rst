@@ -69,14 +69,11 @@ OPTIONAL ARGS
 \-\-keyfile PATH
   Specify the path to the keyfile when initializing, accessing or modifying the database.  No effect if --database is not given.
 
-\-\-cache PATH
-  Specify location to cache password with gpg-agent, where *PATH* is a location on the filesystem.  No effect if --database is not given.
-
 \-\-no-password
   Don't prompt for a password when accessing or modifying the database.  No effect if --database is not given.                                                              
 
-\-\-gpgkey FINGERPRINT
-  Specify GPG key to use when caching password, where *FINGERPRINT* is the fingerprint of the GPG key. *passhole* defaults to the first key in the keychain. Use 'gpg --list-keys --fingerprint' to get a list of keys and their fingerprints.  No effect if --database is not given.
+\-\-no-cache
+  Don't read from or write to cache while opening this database.
 
 \-\-config PATH
   Specify path to config.
@@ -90,14 +87,11 @@ Files
 ~/.config/passhole.ini
     Default location of config.  Specify multiple databases here or edit database options.  See the config section for supported directives.
 
-~/.passhole.kdbx
+~/.local/passhole.kdbx
     Default location of KeePass database. Override with --database *PATH*
 
-~/.passhole.key
+~/.local/passhole.key
     Default location KeePass key.  Override with --keyfile *PATH* or in config.
-
-~/.cache/passhole_cache
-    Default location where gpg-agent temporarily caches the database password.  Override with --cache or in config.
 
 Config
 ======
@@ -110,11 +104,11 @@ database: /path/to/example.kdbx
 keyfile: /path/to/example.key
     Optional.  Path to keyfile.  If not given, assume database has no keyfile.
 
-cache: /path/to/example.cache
-    Optional.  Where to cache encrypted password using GPG2.  *~/.cache/example_cache* is a good choice.  If not given, the password will not be cached.
-
 no-password: True
     Optional.  Assume database has no password and don't prompt for it.  If not given, the password will be loaded from cache or the user prompted.
+
+no-password: False
+    Optional.  Don't read from or write to cache when opening this database.
 
 default: True
     Optional.  Set this database as default.  When using multiple databases, entry or group paths with no **@[Name]** database prefix are assumed to refer to this database.
