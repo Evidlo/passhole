@@ -117,10 +117,8 @@ Isolated install in Docker
 
 .. code:: bash
 
-   # arch
-   make install_arch
    # debian
-   make install_debian
+   make docker_debian
 
 Building manpage and packaging
 

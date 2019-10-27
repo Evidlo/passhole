@@ -26,7 +26,7 @@ pypi: dist man
 
 # ----- Docker -----
 
-nocache_install_debian:
+nocache_docker_debian:
 	docker build \
 		-t "passhole:debian" \
 		-f test/Dockerfile_debian . \
@@ -35,7 +35,7 @@ nocache_install_debian:
 		-it "passhole:debian" \
 		/bin/bash
 
-install_debian:
+docker_debian:
 	docker build \
 		-t "passhole:debian" \
 		-f test/Dockerfile_debian .
