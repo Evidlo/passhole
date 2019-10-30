@@ -107,7 +107,7 @@ keyfile: /path/to/example.key
 no-password: True
     Optional.  Assume database has no password and don't prompt for it.  If not given, the password will be loaded from cache or the user prompted.
 
-no-password: False
+no-cache: True
     Optional.  Don't read from or write to cache when opening this database.
 
 default: True
