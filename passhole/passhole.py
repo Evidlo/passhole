@@ -107,19 +107,6 @@ def get_field(entry, field_input):
         log.error(red("No such field ") + bold(field_input))
         sys.exit()
     return field
-def get_database(databases, path=None, name=None):
-    """Return database specified in path or return default if not given"""
-    if path is not None:
-        name, _ = split_db_prefix(path)
-    # handle @ syntax
-    if name is not None:
-        if name not in databases.keys():
-            log.error(red("No such database ") + bold(name))
-            sys.exit()
-        return databases[name]
-    # return default database (first in OrderedDict)
-    else:
-        return next(iter(databases.values()))
 def no_entry(kp, path):
     if kp.find_entries(path=path, first=True):
         log.error(red("There is already an entry at ") + bold(path))
@@ -261,36 +248,52 @@ def init_database(args):
         c.write(f)
 
 
-def open_databases(
-        database=None,
+def open_database(
         keyfile=None,
-        no_password=False,
         no_cache=False,
+        no_password=False,
         config=default_config,
+        database=None,
+        all=False,
+        name=None,
+        path=None,
         **kwargs
 ):
-    """Load databases
+    """Load one or more databases
 
     Parameters
     ----------
-    database : str, optional
-        path to database (don't read databases from config if given)
     keyfile : str, optional
         path to keyfile.  if not given, assume database has no keyfile
-
-    Other Parameters
-    ----------------
+        (default: None)
+    no_cache : bool, optional
+        don't read/cache database background thread (default: False)
     no_password : bool, optional
-        if True, assume database has no password
+        assume database has no password (default: False)
+    config : str
+        path to database config. no effect if `database` is not None.
+        (default: ~/.config/passhole.ini)
+    database : str, optional
+        open database at this path and ignore config file if given
+        (default: None).  overrides all below options
+    all : bool, optional
+        return a list of 2-tuples containing all databases in the config
+        (default: False).  overrides all below options
+    name : str, optional
+        section name in config of database to open (default: None)
+        overrides all below options
+    path : str, optional
+        entry or group path.  the '@' prefix will be used to determine
+        which database in the config to open (default: None)
 
     Returns
     -------
-    Ordered dictionary of PyKeePass objects keyed by name, first is default
+    PyKeePass object or list of (name, PyKeePass) tuples
     """
-    from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
-    # from construct.core import ChecksumError
 
-    def open_database(name, database, keyfile, no_password, no_cache):
+    from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
+
+    def prompt_open(name, database, keyfile, no_password, no_cache):
         """Open a database and return KeePass object"""
 
         if database is not None:
@@ -307,69 +310,66 @@ def open_databases(
             sys.exit()
 
         # if database is already open on server
-        opened_databases = cached_databases()
-        log.debug("opened databases:" + str(opened_databases))
-        if database in opened_databases and not no_cache:
-            log.debug("opening {} from cache".format(database))
-            return opened_databases[database]
+        if not no_cache:
+            opened_databases = cached_databases()
+            if database in opened_databases:
+                log.debug("opened databases:" + str(opened_databases))
+                log.debug("opening {} from cache".format(database))
+                return opened_databases[database]
 
+        log.debug("{} not found in cache".format(database))
+        # if path of given keyfile doesn't exist
+        if keyfile is not None and  not os.path.exists(keyfile):
+            log.error(red("No keyfile found at ") + bold(keyfile))
+            sys.exit()
+
+        if no_password:
+            password = None
         else:
-            log.debug("{} not found in cache".format(database))
-            # if path of given keyfile doesn't exist
-            if keyfile is not None and  not os.path.exists(keyfile):
-                log.error(red("No keyfile found at ") + bold(keyfile))
-                sys.exit()
-
-            if no_password:
-                password = None
+            if name is not None:
+                prompt = 'Enter password ({}):'.format(name)
             else:
-                if name is not None:
-                    prompt = 'Enter password ({}):'.format(name)
-                else:
-                    prompt = 'Enter password:'
+                prompt = 'Enter password:'
 
-                # check if running in interactive shell
-                if os.isatty(sys.stdout.fileno()):
-                    password = getpass('{} '.format(prompt))
+            # check if running in interactive shell
+            if os.isatty(sys.stdout.fileno()):
+                password = getpass('{} '.format(prompt))
 
-                # otherwise use zenity
-                else:
-                    log.debug('Detected non-interactive shell')
-                    NULL = open(os.devnull, 'w')
-                    try:
-                        p = subprocess.Popen(
-                            ["zenity", "--entry", "--hide-text", "--text='{}'".format(prompt)],
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=NULL,
-                            close_fds=True
-                        )
-                    except FileNotFoundError:
-                        log.error(bold("zenity ") + red("not found."))
-                        sys.exit()
-                    password = p.communicate()[0].decode('utf-8').rstrip('\n')
-
-            log.debug("opening {} with password:{} and keyfile:{}".format(
-                database,
-                str(password),
-                str(keyfile)
-            ))
-
-            if no_cache:
-                from pykeepass import PyKeePass as PyKeePass_nocache
-                return PyKeePass_nocache(database, password=password, keyfile=keyfile)
+            # otherwise use zenity
             else:
-                return PyKeePass(database, password=password, keyfile=keyfile)
+                log.debug('Detected non-interactive shell')
+                try:
+                    p = subprocess.Popen(
+                        ["zenity", "--entry", "--hide-text", "--text='{}'".format(prompt)],
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        stderr=open(os.devnull, 'w'),
+                        close_fds=True
+                    )
+                except FileNotFoundError:
+                    log.error(bold("zenity ") + red("not found."))
+                    sys.exit()
+                password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-    databases = []
+        log.debug("opening {} with password:{} and keyfile:{}".format(
+            database,
+            str(password),
+            str(keyfile)
+        ))
+
+        if no_cache:
+            from pykeepass import PyKeePass as PyKeePass_nocache
+            return PyKeePass_nocache(database, password=password, keyfile=keyfile)
+        else:
+            return PyKeePass(database, password=password, keyfile=keyfile)
+
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        kp = open_database(database, database, keyfile, no_password, no_cache)
-        databases.append((database, kp))
-
-    # otherwise, load each database in config
+        return prompt_open(database, database, keyfile, no_password, no_cache)
     else:
+
+        # read config
         if not os.path.exists(config):
             log.error(red("No config found at ") + bold(config))
             sys.exit()
@@ -378,38 +378,89 @@ def open_databases(
         log.debug("reading config from {}".format(config))
         c.read(config)
 
-        has_default = False
-
+        # find default section
         for section in c.sections():
-            s = c[section]
+            if c.has_option(section, 'default') and c[section].getboolean('default'):
+                default_section = section
+                log.debug('default_section {}'.format(default_section))
+                break
+        else:
+            default_section = None
 
-            if s.get('database') is None:
+        # validate that every section has 'database'
+        for s in c.sections():
+            if not c.has_option(s, 'database'):
                 log.error(bold('database') + red(' option is required'))
                 sys.exit()
 
-            # add a 'default' key for the default database
-            if bool(s.get('default')):
-                has_default = True
+        # open all databases in config
+        if all:
+            kps = []
+            for section in c.sections():
+                kp = prompt_open(
+                    section,
+                    c[section].get('database'),
+                    c[section].get('keyfile'),
+                    c[section].get('no-password'),
+                    c[section].get('no-cache', no_cache)
+                )
 
-            kp = open_database(
-                section,
-                s.get('database'),
-                s.get('keyfile'),
-                s.get('no-password'),
-                s.get('no-cache')
+                # set default database to be first
+                if section == default_section:
+                    kps.insert(0, (section, kp))
+                else:
+                    kps.append((section, kp))
+            return kps
+
+        # open a specific database in config by name
+        elif name is not None:
+            if name not in c.sections():
+                log.error(red("No config section found for " + bold(section)))
+                sys.exit()
+            return prompt_open(
+                name,
+                c[name]['database'],
+                c[name].get('keyfile'),
+                c[name].get('no-password'),
+                c[name].get('no-cache', no_cache)
             )
 
-            # insert default database at position 0
-            if bool(s.get('default')):
-                databases.insert(0, (section, kp))
-            else:
-                databases.append((section, kp))
+        # open a specific database in config using full Element path
+        elif path is not None:
+            section, _ = split_db_prefix(path)
+            if section is None:
+                if default_section is None:
+                    log.error(red("No default database specified in config"))
+                    sys.exit()
+                return prompt_open(
+                    section,
+                    c[default_section].get('database'),
+                    c[default_section].get('keyfile'),
+                    c[default_section].get('no-password'),
+                    c[default_section].get('no-cache', no_cache)
+                )
+            if section not in c.sections():
+                log.error(red("No config section found for " + bold(section)))
+                sys.exit()
+            return prompt_open(
+                section,
+                c[section].get('database'),
+                c[section].get('keyfile'),
+                c[section].get('no-password'),
+                c[section].get('no-cache', no_cache)
+            )
 
-        if not has_default:
-            log.warning("No default database specified in config")
-
-    log.debug('databases: {}'.format(databases))
-    return OrderedDict(databases)
+        # open default database in config
+        if default_section is None:
+            log.error(red("No default database specified in config"))
+            sys.exit()
+        return prompt_open(
+            section,
+            c[default_section].get('database'),
+            c[default_section].get('keyfile'),
+            c[default_section].get('no-password'),
+            c[default_section].get('no-cache', no_cache)
+        )
 
 
 def type_entries(args):
@@ -421,21 +472,36 @@ def type_entries(args):
 
     from pynput.keyboard import Controller, Key
 
-    databases = open_databases(**vars(args))
+    entry_texts = {}
 
-    # generate multi-line string to send to dmenu
-    entry_texts = []
-    for name, kp in databases.items():
+    # type from all databases
+    if args.name is None:
+        databases = open_database(all=True, **vars(args))
+
+        # generate multi-line string to send to dmenu
+        for name, kp in databases:
+            for entry in kp.entries:
+                if entry.title:
+                    if len(databases) > 1:
+                        entry_text = "@{}/{}".format(name, entry.path)
+                    else:
+                        entry_text = entry.path
+                    if args.username:
+                        entry_text += " ({})".format(entry.username)
+                    entry_texts[entry_text] = kp
+        dmenu_text = '\n'.join(sorted(entry_texts.keys()))
+
+    # type from specific database
+    else:
+        kp = open_database(**vars(args))
         for entry in kp.entries:
             if entry.title:
-                if len(databases) > 1:
-                    entry_text = "@{}/{}".format(name, entry.path)
-                else:
-                    entry_text = entry.path
+                entry_text = entry.path
                 if args.username:
                     entry_text += " ({})".format(entry.username)
-                entry_texts.append(entry_text)
-    dmenu_text = '\n'.join(sorted(entry_texts))
+                entry_texts[entry_text] = kp
+        dmenu_text = '\n'.join(sorted(entry_texts.keys()))
+
 
     # get the entry from dmenu
     try:
@@ -449,18 +515,19 @@ def type_entries(args):
     except FileNotFoundError:
         log.error(bold(args.prog[0]) + red(" not found."))
         sys.exit()
-    stdout = p.communicate(input=dmenu_text.encode('utf-8'))[0].decode('utf-8')
-    selection_path = stdout.rstrip('\n').lstrip('[').rstrip(']')
+    stdout = p.communicate(input=dmenu_text.encode('utf-8'))[0].decode('utf-8').rstrip('\n')
+    log.debug("text from dmenu: {}".format(stdout))
 
     # if nothing was selected, return None
-    if not selection_path:
+    if not stdout:
         log.warning("No path returned by {}".format(args.prog))
         return
 
-    kp = get_database(databases, selection_path)
+    kp = entry_texts[stdout]
+    _, selection_path = split_db_prefix(stdout)
     selected_entry = get_entry(kp, selection_path)
 
-    # log.debug("selected_entry:{}".format(selected_entry))
+    log.debug("selected_entry:{}".format(selected_entry))
 
     def call_xdotool(args):
         try:
@@ -494,8 +561,7 @@ def type_entries(args):
 def show(args):
     """Print out the contents of an entry to console"""
 
-    databases = open_databases(**vars(args))
-    kp = get_database(databases, args.path)
+    kp = open_database(**vars(args))
 
     entry = get_entry(kp, args.path)
     # show specified field
@@ -522,8 +588,6 @@ def show(args):
 
 def list_entries(args):
     """List Entries/Groups in the database as a tree"""
-
-    databases = open_databases(**vars(args))
 
     # recursive function to list items in a group
     def list_items(group, prefix, show_branches=True):
@@ -556,7 +620,8 @@ def list_entries(args):
 
     # print all databases
     if args.path is None:
-        for position, (name, kp) in enumerate(databases.items()):
+        databases = open_database(all=True, **vars(args))
+        for position, (name, kp) in enumerate(databases):
             # print names for config-provided databases
             if len(databases) > 1:
                 print('{}{}{}'.format(
@@ -568,7 +633,7 @@ def list_entries(args):
 
     # print specific database
     else:
-        kp = get_database(databases, args.path)
+        kp = open_database(**vars(args))
         # FIXME: write a function: parse_path -> type (db, group, entry)
         # if group, list items
         if args.path.endswith('/'):
@@ -585,9 +650,9 @@ def list_entries(args):
 def grep(args):
     """Search all string fields for a string"""
 
-    databases = open_databases(**vars(args))
+    databases = open_database(all=True, **vars(args))
 
-    for position, (name, kp) in enumerate(databases.items()):
+    for position, (name, kp) in enumerate(databases):
         flags = 'i' if args.i else None
         log.debug("Searching database for pattern: {}".format(args.pattern))
 
@@ -626,8 +691,7 @@ def decompose_path(path):
 def add(args):
     """Create new entry/group"""
 
-    databases = open_databases(**vars(args))
-    kp = get_database(databases, args.path)
+    kp = open_database(**vars(args))
 
     [group_path, child_name] = decompose_path(args.path)
     if not child_name:
@@ -702,8 +766,7 @@ def add(args):
 def remove(args):
     """Remove an Entry/Group"""
 
-    databases = open_databases(**vars(args))
-    kp = get_database(databases, args.path)
+    kp = open_database(**vars(args))
 
     # remove a group
     if args.path.endswith('/'):
@@ -724,8 +787,7 @@ def remove(args):
 def edit(args):
     """Edit fields of an Entry"""
 
-    databases = open_databases(**vars(args))
-    kp = get_database(databases, args.path)
+    kp = open_database(**vars(args))
 
     # edit group name
     if args.path.endswith('/'):
@@ -737,6 +799,7 @@ def edit(args):
                 log.error(red("Only 'name' is supported for Group FIELD"))
                 sys.exit()
             group.name = args.set[1]
+
         # otherwise, edit interactively
         else:
             value = editable_input('Name', group.name)
@@ -750,15 +813,18 @@ def edit(args):
             field = get_field(entry, args.field)
             value = editable_input(field, entry._get_string_field(field))
             entry._set_string_field(field, value)
+
         # add/set a field
         elif args.set:
             field = reserved_fields.get(args.set[0], args.set[0])
             entry._set_string_field(field, args.set[1])
+
         # remove a field
         elif args.remove:
             field = get_field(entry, args.remove)
             results = entry._element.xpath('String/Key[text()="{}"]/..'.format(field))
             entry._element.remove(results[0])
+
         # otherwise, edit all fields interactively
         else:
             for field in entry._get_string_field_keys():
@@ -771,46 +837,63 @@ def edit(args):
 def move(args):
     """Move an Entry/Group"""
 
-    databases = open_databases(**vars(args))
-    src_kp = get_database(databases, args.src_path)
-    dest_kp = get_database(databases, args.dest_path)
+    src_kp = open_database(path=args.src_path, **vars(args))
+    dest_kp = open_database(path=args.dest_path, **vars(args))
+
+    # FIXME: pykeepass_cache doesn't support moving elements between databases
+    if src_kp.filename != dest_kp.filename:
+        log.error(red("Moving elements between databases not supported"))
+        sys.exit()
 
     [group_path, child_name] = decompose_path(args.dest_path)
-    parent_group = get_group(dest_kp, group_path)
+    # parent_group = get_group(dest_kp, group_path)
+    parent_group = get_group(src_kp, group_path)
 
     # if source path is group
     if args.src_path.endswith('/'):
         src = get_group(src_kp, args.src_path)
+
         # if dest path is group
         if args.dest_path.endswith('/'):
-            dest = dest_kp.find_groups(path=args.dest_path, first=True)
+            # dest = dest_kp.find_groups(path=args.dest_path, first=True)
+            dest = src_kp.find_groups(path=args.dest_path, first=True)
             if dest:
-                dest_kp.move_group(src, dest)
+                # dest_kp.move_group(src, dest)
+                src_kp.move_group(src, dest)
             else:
                 src.name = child_name
-                dest_kp.move_group(src, parent_group)
+                # dest_kp.move_group(src, parent_group)
+                src_kp.move_group(src, parent_group)
+
         # if dest path is entry
         else:
             log.error(red("Destination must end in '/'"))
             sys.exit()
+
     # if source path is entry
     else:
         src = get_entry(src_kp, args.src_path)
+
         # if dest path is group
         if args.dest_path.endswith('/'):
-            dest = get_group(dest_kp, args.dest_path)
-            dest_kp.move_entry(src, dest)
+            # dest = get_group(dest_kp, args.dest_path)
+            dest = get_group(src_kp, args.dest_path)
+            # dest_kp.move_entry(src, dest)
+            src_kp.move_entry(src, dest)
             log.debug("Moving entry: {} -> {}".format(src, dest))
+
         # if dest path is entry
         else:
-            no_entry(dest_kp, args.dest_path)
+            # no_entry(dest_kp, args.dest_path)
+            no_entry(src_kp, args.dest_path)
             log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
             src.title = child_name
             log.debug("Moving entry: {} -> {}".format(src, parent_group))
-            dest_kp.move_entry(src, parent_group)
+            # dest_kp.move_entry(src, parent_group)
+            src_kp.move_entry(src, parent_group)
 
     src_kp.save()
-    dest_kp.save()
+    # dest_kp.save()
 
 
 def dump(args):
@@ -818,17 +901,9 @@ def dump(args):
 
     from lxml import etree
 
-    databases = open_databases(**vars(args))
-    kp = get_database(databases, name=args.name)
+    kp = open_database(**vars(args))
 
-    print(
-        etree.tostring(
-            kp.tree,
-            pretty_print=True,
-            standalone=True,
-            encoding='utf-8'
-        ).decode('utf-8')
-    )
+    print(kp.xml())
 
 
 def create_parser():
@@ -851,7 +926,8 @@ def create_parser():
 
     # process args for `type` command
     type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
-    type_parser.add_argument('prog', metavar='PROG', nargs='?', default='dmenu', help="dmenu-like program to call")
+    type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
+    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
     type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
