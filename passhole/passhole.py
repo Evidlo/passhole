@@ -353,7 +353,7 @@ def open_database(
 
         log.debug("opening {} with password:{} and keyfile:{}".format(
             database,
-            str(password),
+            None if password is None else 'redacted',
             str(keyfile)
         ))
 
