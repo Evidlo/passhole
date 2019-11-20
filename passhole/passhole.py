@@ -327,9 +327,9 @@ def open_database(
             password = None
         else:
             if name is not None:
-                prompt = 'Enter password ({}):'.format(name)
+                prompt = 'Enter database password ({}):'.format(name)
             else:
-                prompt = 'Enter password:'
+                prompt = 'Enter database password:'
 
             # check if running in interactive shell
             if os.isatty(sys.stdout.fileno()):
