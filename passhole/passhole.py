@@ -918,20 +918,11 @@ def create_parser():
 
     path_help = "entry path (e.g. 'foo') or group path (e.g. 'foo/')"
 
-    # process args for `show` command
-    show_parser = subparsers.add_parser('show', help="show the contents of an entry")
-    show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
-    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
-    show_parser.set_defaults(func=show)
-
-    # process args for `type` command
-    type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
-    type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
-    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call")
-    type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
-    type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
-    type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
-    type_parser.set_defaults(func=type_entries)
+    # process args for `list` command
+    list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default=None, type=str, help=path_help)
+    list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
+    list_parser.set_defaults(func=list_entries)
 
     # process args for `add` command
     add_parser = subparsers.add_parser('add', help="add new entry or group")
@@ -948,6 +939,18 @@ def create_parser():
     remove_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
     remove_parser.set_defaults(func=remove)
 
+    # process args for `move` command
+    move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry or group")
+    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help=path_help)
+    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help=path_help)
+    move_parser.set_defaults(func=move)
+
+    # process args for `show` command
+    show_parser = subparsers.add_parser('show', help="show the contents of an entry")
+    show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
+    show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
+    show_parser.set_defaults(func=show)
+
     # process args for `edit` command
     edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry or group")
     edit_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
@@ -956,17 +959,19 @@ def create_parser():
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
     edit_parser.set_defaults(func=edit)
 
-    # process args for `move` command
-    move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry or group")
-    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help=path_help)
-    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help=path_help)
-    move_parser.set_defaults(func=move)
+    # process args for `type` command
+    type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
+    type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
+    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call")
+    type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
+    type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
+    type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
+    type_parser.set_defaults(func=type_entries)
 
-    # process args for `list` command
-    list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
-    list_parser.add_argument('path', nargs='?', metavar='PATH', default=None, type=str, help=path_help)
-    list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
-    list_parser.set_defaults(func=list_entries)
+    # process args for `init` command
+    init_parser = subparsers.add_parser('init', help="initialize a new database")
+    init_parser.add_argument('--name', type=str, help="name of database to initialize")
+    init_parser.set_defaults(func=init_database)
 
     # process args for `grep` command
     grep_parser = subparsers.add_parser('grep', help="list entries with title matching regex pattern")
@@ -975,11 +980,6 @@ def create_parser():
     grep_parser.add_argument('--field', metavar='FIELD', type=str, help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
-
-    # process args for `init` command
-    init_parser = subparsers.add_parser('init', help="initialize a new database")
-    init_parser.add_argument('--name', type=str, help="name of database to initialize")
-    init_parser.set_defaults(func=init_database)
 
     # process args for `dump` command
     dump_parser = subparsers.add_parser('dump', help="pretty print database XML to console")
