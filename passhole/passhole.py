@@ -470,7 +470,12 @@ def type_entries(args):
     If `tabbed` is true, both the username and password are typed, separated
     by a tab"""
 
-    from pynput.keyboard import Controller, Key
+    from Xlib.error import DisplayNameError
+
+    try:
+        from pynput.keyboard import Controller, Key
+    except DisplayNameError:
+        log.error(red("No X11 session found"))
 
     entry_texts = {}
 
