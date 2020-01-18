@@ -366,7 +366,11 @@ def open_database(
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        return prompt_open(database, database, keyfile, no_password, no_cache)
+        kp = prompt_open(database, database, keyfile, no_password, no_cache)
+        if all:
+            return [(None, kp)]
+        else:
+            return kp
     else:
 
         # read config
