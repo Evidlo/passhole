@@ -25,7 +25,7 @@ Features
 - fill user/pass field in any application via keyboard shortcut
 - add, delete, move, edit, rename entries and groups
 - generate `correct horse battery staple`_ style, alphanumeric, symbolic passwords
-- temporarily cache database password for 10 minutes
+- temporarily cache database password (by default for 5 minutes)
 - multiple databases
 - supports KeePass v3 and v4 databases
 

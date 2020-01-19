@@ -14,12 +14,14 @@ Tests
   - optional args
     - cache path
     - no cache
+    - cache timeout
     - gpgkey
     - keyfile
     - no keyfile
     - db path
     - version
 """
+import unittest
 
 
 class ShowTests(unittest.TestCase):
