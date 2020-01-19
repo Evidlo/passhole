@@ -16,6 +16,7 @@ import readline
 # import gpgme
 import random
 import os
+from os.path import realpath, expanduser, dirname, join
 import sys
 import shutil
 import logging
@@ -29,15 +30,15 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-default_config = os.path.expanduser('~/.config/passhole.ini')
-default_database = os.path.expanduser('~/.local/passhole/{}.kdbx')
-default_keyfile = os.path.expanduser('~/.local/passhole/{}.key')
+default_config = expanduser('~/.config/passhole.ini')
+default_database = expanduser('~/.local/passhole/{}.kdbx')
+default_keyfile = expanduser('~/.local/passhole/{}.key')
 
-base_dir = os.path.dirname(os.path.realpath(__file__))
+base_dir = dirname(realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
-wordlist_file = os.path.join(base_dir, 'wordlist.txt')
-template_database_file = os.path.join(base_dir, 'blank.kdbx')
-template_config_file = os.path.join(base_dir, 'passhole.ini')
+wordlist_file = join(base_dir, 'wordlist.txt')
+template_database_file = join(base_dir, 'blank.kdbx')
+template_config_file = join(base_dir, 'passhole.ini')
 
 alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = '0123456789'
@@ -218,7 +219,7 @@ def init_database(args):
             sys.exit()
 
         print("Creating keyfile at " + bold(keyfile))
-        os.makedirs(os.path.dirname(keyfile), exist_ok=True)
+        os.makedirs(dirname(keyfile), exist_ok=True)
         with open(keyfile, 'w') as f:
             contents = '''
             <?xml version="1.0" encoding="UTF-8"?>
@@ -232,7 +233,7 @@ def init_database(args):
 
     # create database
     print("Creating database at {}".format(bold(database_path)))
-    os.makedirs(os.path.dirname(database_path), exist_ok=True)
+    os.makedirs(dirname(database_path), exist_ok=True)
     shutil.copy(template_database_file, database_path)
 
     from pykeepass import PyKeePass
@@ -243,7 +244,7 @@ def init_database(args):
 
     # create config
     print("Creating config at {}".format(bold(args.config)))
-    os.makedirs(os.path.dirname(args.config), exist_ok=True)
+    os.makedirs(dirname(args.config), exist_ok=True)
     with open(args.config, 'w') as f:
         c.write(f)
 
@@ -297,9 +298,9 @@ def open_database(
         """Open a database and return KeePass object"""
 
         if database is not None:
-            database = os.path.abspath(os.path.expanduser(database))
+            database = realpath(expanduser(database))
         if keyfile is not None:
-            keyfile = os.path.abspath(os.path.expanduser(keyfile))
+            keyfile = realpath(expanduser(keyfile))
 
         # check if database exists
         if not os.path.exists(database):
@@ -309,11 +310,11 @@ def open_database(
             )
             sys.exit()
 
-        # if database is already open on server
         if not no_cache:
             opened_databases = cached_databases()
+            log.debug("opened databases:" + str(opened_databases))
+            # if database is already open on server
             if database in opened_databases:
-                log.debug("opened databases:" + str(opened_databases))
                 log.debug("opening {} from cache".format(database))
                 return opened_databases[database]
 
