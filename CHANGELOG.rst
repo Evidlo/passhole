@@ -1,3 +1,12 @@
+1.9.2 - 2019-01-18
+------------------
+- fix 'edit' protecting password text
+
+1.9.1 - 2019-11-20
+------------------
+- catch pynput xorg error
+- don't unlock all databases when access an entry
+
 1.9 - 2019-09-09
 ----------------
 - use background thread for caching databases, removed `--gpgkey` option
