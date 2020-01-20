@@ -252,6 +252,7 @@ def init_database(args):
 def open_database(
         keyfile=None,
         no_cache=False,
+        cache_timeout=600,
         no_password=False,
         config=default_config,
         database=None,
@@ -269,6 +270,9 @@ def open_database(
         (default: None)
     no_cache : bool, optional
         don't read/cache database background thread (default: False)
+    cache_timeout : int, optional
+        seconds to keep read/cache database background thread, has no effect if no_cache=True
+        (default: 300)
     no_password : bool, optional
         assume database has no password (default: False)
     config : str
@@ -294,8 +298,9 @@ def open_database(
 
     from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
 
-    def prompt_open(name, database, keyfile, no_password, no_cache):
+    def prompt_open(name, database, keyfile, no_password, no_cache, cache_timeout):
         """Open a database and return KeePass object"""
+        cache_timeout = int(cache_timeout)
 
         if database is not None:
             database = realpath(expanduser(database))
@@ -311,7 +316,7 @@ def open_database(
             sys.exit()
 
         if not no_cache:
-            opened_databases = cached_databases()
+            opened_databases = cached_databases(timeout=cache_timeout)
             log.debug("opened databases:" + str(opened_databases))
             # if database is already open on server
             if database in opened_databases:
@@ -362,12 +367,12 @@ def open_database(
             from pykeepass import PyKeePass as PyKeePass_nocache
             return PyKeePass_nocache(database, password=password, keyfile=keyfile)
         else:
-            return PyKeePass(database, password=password, keyfile=keyfile)
+            return PyKeePass(database, password=password, keyfile=keyfile, timeout=cache_timeout)
 
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        kp = prompt_open(database, database, keyfile, no_password, no_cache)
+        kp = prompt_open(database, database, keyfile, no_password, no_cache, cache_timeout)
         if all:
             return [(None, kp)]
         else:
@@ -407,7 +412,8 @@ def open_database(
                     c[section].get('database'),
                     c[section].get('keyfile'),
                     c[section].get('no-password'),
-                    c[section].get('no-cache', no_cache)
+                    c[section].get('no-cache', no_cache),
+                    c[section].get('cache-timeout', cache_timeout)
                 )
 
                 # set default database to be first
@@ -427,7 +433,8 @@ def open_database(
                 c[name]['database'],
                 c[name].get('keyfile'),
                 c[name].get('no-password'),
-                c[name].get('no-cache', no_cache)
+                c[name].get('no-cache', no_cache),
+                c[name].get('cache-timeout', cache_timeout)
             )
 
         # open a specific database in config using full Element path
@@ -442,7 +449,8 @@ def open_database(
                     c[default_section].get('database'),
                     c[default_section].get('keyfile'),
                     c[default_section].get('no-password'),
-                    c[default_section].get('no-cache', no_cache)
+                    c[default_section].get('no-cache', no_cache),
+                    c[default_section].get('cache-timeout', cache_timeout)
                 )
             if section not in c.sections():
                 log.error(red("No config section found for " + bold(section)))
@@ -452,7 +460,8 @@ def open_database(
                 c[section].get('database'),
                 c[section].get('keyfile'),
                 c[section].get('no-password'),
-                c[section].get('no-cache', no_cache)
+                c[section].get('no-cache', no_cache),
+                c[section].get('cache-timeout', cache_timeout)
             )
 
         # open default database in config
@@ -464,7 +473,8 @@ def open_database(
             c[default_section].get('database'),
             c[default_section].get('keyfile'),
             c[default_section].get('no-password'),
-            c[default_section].get('no-cache', no_cache)
+            c[default_section].get('no-cache', no_cache),
+            c[default_section].get('cache-timeout', cache_timeout)
         )
 
 
@@ -1002,7 +1012,8 @@ def create_parser():
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
     parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
-    parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify database path")
+    parser.add_argument('--cache-timeout', metavar='SEC', type=int, default=600, help="seconds to hold database open in a background process")
+    parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify config path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
     return parser

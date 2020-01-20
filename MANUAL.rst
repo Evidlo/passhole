@@ -75,6 +75,9 @@ OPTIONAL ARGS
 \-\-no-cache
   Don't read from or write to cache while opening this database.
 
+\-\-cache-timeout
+  Timeout to read from or write to cache while opening this database. No effect if --no-cache=True
+
 \-\-config PATH
   Specify path to config.
 
@@ -109,6 +112,9 @@ no-password: True
 
 no-cache: True
     Optional.  Don't read from or write to cache when opening this database.
+
+cache-timeout: 300
+  Seconds to keep databases open in cache. Cache timeout is the same for all open databases and should be set in the first section in the config.  The timeout timer resets with each passhole invocation.  No effect if no-cache=True
 
 default: True
     Optional.  Set this database as default.  When using multiple databases, entry or group paths with no **@[Name]** database prefix are assumed to refer to this database.
