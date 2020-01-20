@@ -252,7 +252,7 @@ def init_database(args):
 def open_database(
         keyfile=None,
         no_cache=False,
-        cache_timeout=300,
+        cache_timeout=600,
         no_password=False,
         config=default_config,
         database=None,
@@ -1012,7 +1012,7 @@ def create_parser():
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
     parser.add_argument('--no-password', action='store_true', default=False, help="don't prompt for a password")
     parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
-    parser.add_argument('--cache-timeout', metavar='SECONDS', type=int, default=300, help="seconds to keep read/cache database background thread")
+    parser.add_argument('--cache-timeout', metavar='SECONDS', type=int, default=600, help="seconds to keep read/cache database background thread")
     parser.add_argument('--config', metavar='PATH', type=str, default=default_config, help="specify config path")
     parser.add_argument('-v', '--version', action='version', version=__version__, help="show version information")
 
