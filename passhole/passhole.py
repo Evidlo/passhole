@@ -1029,11 +1029,7 @@ def main():
         log.setLevel(logging.DEBUG)
         logging.getLogger('pykeepass_cache').setLevel(logging.DEBUG)
 
-    args.func(args)
-
-
-if __name__ == '__main__':
     try:
-        main()
+        args.func(args)
     except KeyboardInterrupt:
-        pass
+        print()
