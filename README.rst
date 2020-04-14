@@ -99,9 +99,9 @@ Example i3wm Keybindings
 .. code:: bash
 
    # select entry using dmenu, then send password to keyboard
-   bindsym $mod+p exec "ph type dmenu"
+   bindsym $mod+p exec --no-startup-id "ph type"
    # select entry using dmenu, then send username + password to keyboard
-   bindsym $mod+Shift+p exec "ph type dmenu --tabbed"
+   bindsym $mod+Shift+p exec --no-startup-id "ph type --tabbed"
 
 Testing and Development
 -----------------------
