@@ -31,8 +31,8 @@ logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 default_config = expanduser('~/.config/passhole.ini')
-default_database = expanduser('~/.local/passhole/{}.kdbx')
-default_keyfile = expanduser('~/.local/passhole/{}.key')
+default_database = expanduser('~/.local/share/passhole/{}.kdbx')
+default_keyfile = expanduser('~/.local/share/passhole/{}.key')
 
 base_dir = dirname(realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
