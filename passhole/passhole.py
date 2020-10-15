@@ -754,8 +754,14 @@ def add(args):
 
         # prompt for password instead of generating it
         else:
-            password = getpass(green('Password: '))
-            password_confirm = getpass(green('Confirm: '))
+            if sys.stdin.isatty():
+                prompt_func = lambda: getpass(green('Password: '))
+                confirm_func = lambda: getpass(green('Confirm: '))
+            else:
+                prompt_func = lambda: sys.stdin.readline().rstrip()
+                confirm_func = lambda: sys.stdin.readline().rstrip()
+            password = prompt_func()
+            password_confirm = confirm_func()
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
                 sys.exit()
