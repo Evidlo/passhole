@@ -42,6 +42,8 @@ Setup
 
    pip install passhole
    ph init
+   
+   # install zenity for password prompt 
 
 
 Example Usage
