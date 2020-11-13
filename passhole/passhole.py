@@ -363,11 +363,25 @@ def open_database(
             str(keyfile)
         ))
 
-        if no_cache:
-            from pykeepass import PyKeePass as PyKeePass_nocache
-            return PyKeePass_nocache(database, password=password, keyfile=keyfile)
-        else:
-            return PyKeePass(database, password=password, keyfile=keyfile, timeout=cache_timeout)
+        try:
+            if no_cache:
+                from pykeepass import PyKeePass as PyKeePass_nocache
+                return PyKeePass_nocache(database, password=password, keyfile=keyfile)
+            else:
+                return PyKeePass(database, password=password, keyfile=keyfile, timeout=cache_timeout)
+        # FIXME: handle exceptions more gracefully
+        # does importing from pykeepass.exceptions cause an increase in startup time?
+        except Exception as e:
+            if type(e).__name__ == 'pykeepass.exceptions.CredentialsError':
+                log.error(red("Invalid credentials"))
+            elif type(e).__name__ == 'pykeepass.exceptions.PayloadChecksumError':
+                log.error(red("Payload checksum error"))
+            elif type(e).__name__ == 'pykeepass.exceptions.HeaderChecksumError':
+                log.error(red("Header checksum error"))
+            else:
+                log.error(red("Error opening database"))
+                log.debug(e)
+            sys.exit()
 
 
     # if 'database' argument given, ignore config completely
@@ -1032,6 +1046,7 @@ def create_parser():
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
+    parser.add_argument('--password', action='store_true', default=False, help="database has no password")
     parser.add_argument('--no-password', action='store_true', default=False, help="database has no password")
     parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
     parser.add_argument('--cache-timeout', metavar='SEC', type=int, default=600, help="seconds to hold database open in a background process")
