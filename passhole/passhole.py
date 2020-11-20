@@ -1046,7 +1046,6 @@ def create_parser():
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
-    parser.add_argument('--password', action='store_true', default=False, help="database has no password")
     parser.add_argument('--no-password', action='store_true', default=False, help="database has no password")
     parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
     parser.add_argument('--cache-timeout', metavar='SEC', type=int, default=600, help="seconds to hold database open in a background process")
