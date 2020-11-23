@@ -93,29 +93,29 @@ def get_group(kp, path):
     group = kp.find_groups(path=path, first=True)
     if group is None:
         log.error(red("No such group ") + bold(path))
-        sys.exit()
+        sys.exit(1)
     return group
 def get_entry(kp, path):
     _, path = split_db_prefix(path)
     entry = kp.find_entries(path=path, first=True)
     if entry is None:
         log.error(red("No such entry ") + bold(path))
-        sys.exit()
+        sys.exit(1)
     return entry
 def get_field(entry, field_input):
     field = reserved_fields.get(field_input, field_input)
     if field not in entry._get_string_field_keys():
         log.error(red("No such field ") + bold(field_input))
-        sys.exit()
+        sys.exit(1)
     return field
 def no_entry(kp, path):
     if kp.find_entries(path=path, first=True):
         log.error(red("There is already an entry at ") + bold(path))
-        sys.exit()
+        sys.exit(1)
 def no_group(kp, path):
     if kp.find_groups(path=path, first=True):
         log.error(red("There is already group at ") + bold(path))
-        sys.exit()
+        sys.exit(1)
 def split_db_prefix(path):
     if path.startswith('@'):
         if '/' in path:
@@ -152,7 +152,7 @@ def init_database(args):
             red("There is already a database named ") + bold(database_name) +
             red(" in ") + bold(args.config)
         )
-        sys.exit()
+        sys.exit(1)
     else:
         c.add_section(database_name)
 
@@ -172,7 +172,7 @@ def init_database(args):
     # quit if database already exists
     if os.path.exists(database_path):
         log.error(red("Found database at ") + bold(database_path))
-        sys.exit()
+        sys.exit(1)
     else:
         c.set(database_name, 'database', database_path)
 
@@ -189,7 +189,7 @@ def init_database(args):
 
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
-                sys.exit()
+                sys.exit(1)
         else:
             password = None
             c.set(database_name, 'no-password', 'True')
@@ -216,7 +216,7 @@ def init_database(args):
         log.debug("Looking for keyfile at {}".format(keyfile))
         if os.path.exists(keyfile):
             print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
-            sys.exit()
+            sys.exit(1)
 
         print("Creating keyfile at " + bold(keyfile))
         os.makedirs(dirname(keyfile), exist_ok=True)
@@ -313,7 +313,7 @@ def open_database(
                 red("No database found at ") +
                 bold(database)
             )
-            sys.exit()
+            sys.exit(1)
 
         if not no_cache:
             opened_databases = cached_databases(timeout=cache_timeout)
@@ -327,7 +327,7 @@ def open_database(
         # if path of given keyfile doesn't exist
         if keyfile is not None and  not os.path.exists(keyfile):
             log.error(red("No keyfile found at ") + bold(keyfile))
-            sys.exit()
+            sys.exit(1)
 
         if no_password:
             password = None
@@ -354,7 +354,7 @@ def open_database(
                     )
                 except FileNotFoundError:
                     log.error(bold("zenity ") + red("not found."))
-                    sys.exit()
+                    sys.exit(1)
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
         log.debug("opening {} with password:{} and keyfile:{}".format(
@@ -381,7 +381,7 @@ def open_database(
             else:
                 log.error(red("Error opening database"))
                 log.debug(e)
-            sys.exit()
+            sys.exit(1)
 
 
     # if 'database' argument given, ignore config completely
@@ -396,7 +396,7 @@ def open_database(
         # read config
         if not os.path.exists(config):
             log.error(red("No config found at ") + bold(config))
-            sys.exit()
+            sys.exit(1)
 
         c = ConfigParser()
         log.debug("reading config from {}".format(config))
@@ -415,7 +415,7 @@ def open_database(
         for s in c.sections():
             if not c.has_option(s, 'database'):
                 log.error(bold('database') + red(' option is required'))
-                sys.exit()
+                sys.exit(1)
 
         # open all databases in config
         if all:
@@ -441,7 +441,7 @@ def open_database(
         elif name is not None:
             if name not in c.sections():
                 log.error(red("No config section found for " + bold(section)))
-                sys.exit()
+                sys.exit(1)
             return prompt_open(
                 name,
                 c[name]['database'],
@@ -457,7 +457,7 @@ def open_database(
             if section is None:
                 if default_section is None:
                     log.error(red("No default database specified in config"))
-                    sys.exit()
+                    sys.exit(1)
                 return prompt_open(
                     section,
                     c[default_section].get('database'),
@@ -468,7 +468,7 @@ def open_database(
                 )
             if section not in c.sections():
                 log.error(red("No config section found for " + bold(section)))
-                sys.exit()
+                sys.exit(1)
             return prompt_open(
                 section,
                 c[section].get('database'),
@@ -481,7 +481,7 @@ def open_database(
         # open default database in config
         if default_section is None:
             log.error(red("No default database specified in config"))
-            sys.exit()
+            sys.exit(1)
         return prompt_open(
             section,
             c[default_section].get('database'),
@@ -548,7 +548,7 @@ def type_entries(args):
         )
     except FileNotFoundError:
         log.error(bold(args.prog[0]) + red(" not found."))
-        sys.exit()
+        sys.exit(1)
     stdout = p.communicate(input=dmenu_text.encode('utf-8'))[0].decode('utf-8').rstrip('\n')
     log.debug("text from dmenu: {}".format(stdout))
 
@@ -568,7 +568,7 @@ def type_entries(args):
             subprocess.call(["xdotool"] + args)
         except FileNotFoundError:
             log.error(bold("xdotool ") + red("not found"))
-            sys.exit()
+            sys.exit(1)
 
     # type out password
     k = Controller()
@@ -730,7 +730,7 @@ def add(args):
     [group_path, child_name] = decompose_path(args.path)
     if not child_name:
         log.error(red("Path is invalid"))
-        sys.exit()
+        sys.exit(1)
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , child_name:{}".format(group_path, child_name))
@@ -778,7 +778,7 @@ def add(args):
             password_confirm = confirm_func()
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
-                sys.exit()
+                sys.exit(1)
 
         # append fixed string to password
         if args.append:
@@ -813,7 +813,7 @@ def remove(args):
         group = get_group(kp, args.path)
         if len(group.entries) > 0:
             log.error(red("Non-empty group ") + bold(args.path))
-            sys.exit()
+            sys.exit(1)
         group.delete()
 
     # remove an entry
@@ -837,7 +837,7 @@ def edit(args):
             field = args.set[0]
             if field.lower() != 'name':
                 log.error(red("Only 'name' is supported for Group FIELD"))
-                sys.exit()
+                sys.exit(1)
             group.name = args.set[1]
 
         # otherwise, edit interactively
@@ -883,7 +883,7 @@ def move(args):
     # FIXME: pykeepass_cache doesn't support moving elements between databases
     if src_kp.filename != dest_kp.filename:
         log.error(red("Moving elements between databases not supported"))
-        sys.exit()
+        sys.exit(1)
 
     [group_path, child_name] = decompose_path(args.dest_path)
     # parent_group = get_group(dest_kp, group_path)
@@ -908,7 +908,7 @@ def move(args):
         # if dest path is entry
         else:
             log.error(red("Destination must end in '/'"))
-            sys.exit()
+            sys.exit(1)
 
     # if source path is entry
     else:
