@@ -338,7 +338,7 @@ def open_database(
                 prompt = 'Enter database password:'
 
             # check if running in interactive shell
-            if os.isatty(sys.stdout.fileno()):
+            if sys.stdin.isatty():
                 password = getpass('{} '.format(prompt))
 
             # otherwise use zenity
