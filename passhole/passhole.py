@@ -30,9 +30,16 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-default_config = expanduser('~/.config/passhole.ini')
-default_database = expanduser('~/.local/share/passhole/{}.kdbx')
-default_keyfile = expanduser('~/.local/share/passhole/{}.key')
+default_config = '~/.config/passhole.ini'
+default_database = '~/.local/share/passhole/{}.kdbx'
+default_keyfile = '~/.local/share/passhole/{}.key'
+keyfile_contents = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<KeyFile>
+    <Meta><Version>1.00</Version></Meta>
+    <Key><Data>{}</Data></Key>
+</KeyFile>
+'''
 
 base_dir = dirname(realpath(__file__))
 # taken from https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
@@ -161,13 +168,13 @@ def init_database(args):
 
     # ----- database prompt -----
 
-    if args.database is None:
+    if args.name is None:
         database_path = editable_input(
             "Desired database path",
             default_database.format(database_name)
         )
     else:
-        database_path = args.database
+        database_path = args.database.format(database_name)
 
 
     # quit if database already exists
@@ -179,17 +186,11 @@ def init_database(args):
 
     # ----- password prompt -----
 
-    if args.no_password:
-        password = None
-        c.set(database_name, 'no-password', 'True')
-    else:
+    if args.name is None:
         use_password = boolean_input("Password protect database?")
-        log.debug(f"use: {use_password}")
         if use_password:
             password = getpass(green('Password: '))
-            log.debug(f"pass: {password}")
             password_confirm = getpass(green('Confirm: '))
-            log.debug(f"conf: {password_confirm}")
 
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
@@ -197,27 +198,29 @@ def init_database(args):
         else:
             password = None
             c.set(database_name, 'no-password', 'True')
-
-
+    else:
+        password = args.password
+        if password is None:
+            c.set(database_name, 'no-password', 'True')
 
     # ----- keyfile prompt -----
 
-    if args.keyfile is None:
+    if args.name is None:
         use_keyfile = boolean_input("Use a keyfile?")
         if use_keyfile:
             keyfile = editable_input("Desired keyfile path",
                 default_keyfile.format(database_name)
             )
-            c.set(database_name, 'keyfile', keyfile)
         else:
             keyfile = None
     else:
         keyfile = args.keyfile
-        c.set(database_name, 'keyfile', keyfile)
 
     # ----- create keyfile/database/config -----
     # create keyfile
     if keyfile is not None:
+
+        keyfile = realpath(expanduser(keyfile))
 
         log.debug("Looking for keyfile at {}".format(keyfile))
         if os.path.exists(keyfile):
@@ -226,17 +229,12 @@ def init_database(args):
 
         print("Creating keyfile at " + bold(keyfile))
         os.makedirs(dirname(keyfile), exist_ok=True)
+        c.set(database_name, 'keyfile', keyfile)
         with open(keyfile, 'w') as f:
-            contents = '''
-            <?xml version="1.0" encoding="UTF-8"?>
-            <KeyFile>
-                <Meta><Version>1.00</Version></Meta>
-                <Key><Data>{}</Data></Key>
-            </KeyFile>
-            '''
-            log.debug("keyfile contents {}".format(contents))
-            f.write(contents.format(b64encode(os.urandom(32)).decode()))
+            log.debug("keyfile contents {}".format(keyfile_contents))
+            f.write(keyfile_contents.format(b64encode(os.urandom(32)).decode()))
 
+    database_path = realpath(expanduser(database_path))
     # create database
     print("Creating database at {}".format(bold(database_path)))
     os.makedirs(dirname(database_path), exist_ok=True)
@@ -248,10 +246,11 @@ def init_database(args):
     kp.keyfile = keyfile
     kp.save()
 
+    config = realpath(expanduser(args.config))
     # create config
-    print("Creating config at {}".format(bold(args.config)))
-    os.makedirs(dirname(args.config), exist_ok=True)
-    with open(args.config, 'w') as f:
+    print("Creating config at {}".format(bold(config)))
+    os.makedirs(dirname(config), exist_ok=True)
+    with open(config, 'w') as f:
         c.write(f)
 
 
@@ -400,6 +399,8 @@ def open_database(
     else:
 
         # read config
+        config = realpath(expanduser(config))
+
         if not os.path.exists(config):
             log.error(red("No config found at ") + bold(config))
             sys.exit(1)
@@ -1026,7 +1027,10 @@ def create_parser():
 
     # process args for `init` command
     init_parser = subparsers.add_parser('init', help="initialize a new database")
-    init_parser.add_argument('--name', type=str, help="name of database to initialize")
+    init_parser.add_argument('--name', type=str, help="name of database")
+    init_parser.add_argument('--database', type=str, default=default_database, help="path to database file")
+    init_parser.add_argument('--password', type=str, default=None, help="database password")
+    init_parser.add_argument('--keyfile', type=str, default=None, help="database password")
     init_parser.set_defaults(func=init_database)
 
     # process args for `grep` command
