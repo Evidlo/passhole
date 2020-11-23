@@ -169,6 +169,7 @@ def init_database(args):
     else:
         database_path = args.database
 
+
     # quit if database already exists
     if os.path.exists(database_path):
         log.error(red("Found database at ") + bold(database_path))
@@ -183,9 +184,12 @@ def init_database(args):
         c.set(database_name, 'no-password', 'True')
     else:
         use_password = boolean_input("Password protect database?")
+        log.debug(f"use: {use_password}")
         if use_password:
             password = getpass(green('Password: '))
+            log.debug(f"pass: {password}")
             password_confirm = getpass(green('Confirm: '))
+            log.debug(f"conf: {password_confirm}")
 
             if not password == password_confirm:
                 log.error(red("Passwords do not match"))
@@ -193,6 +197,8 @@ def init_database(args):
         else:
             password = None
             c.set(database_name, 'no-password', 'True')
+
+
 
     # ----- keyfile prompt -----
 
@@ -1012,7 +1018,7 @@ def create_parser():
     # process args for `type` command
     type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
     type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
-    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call")
+    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call for entry selection")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
     type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
