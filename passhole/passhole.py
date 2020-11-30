@@ -21,6 +21,8 @@ import sys
 import shutil
 import logging
 import argparse
+import argcomplete
+from argcomplete import warn
 from configparser import ConfigParser
 from collections import OrderedDict
 
@@ -351,14 +353,14 @@ def open_database(
                 log.debug('Detected non-interactive shell')
                 try:
                     p = subprocess.Popen(
-                        ["zenity", "--entry", "--hide-text", "--text='{}'".format(prompt)],
+                        ["zenity", "--entry", "--hide-text", "--text={}".format(prompt)],
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
                         stderr=open(os.devnull, 'w'),
                         close_fds=True
                     )
                 except FileNotFoundError:
-                    log.error(bold("zenity ") + red("not found."))
+                    log.error(bold("zenity ") + red("not found"))
                     sys.exit(1)
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
@@ -490,7 +492,7 @@ def open_database(
             log.error(red("No default database specified in config"))
             sys.exit(1)
         return prompt_open(
-            section,
+            default_section,
             c[default_section].get('database'),
             c[default_section].get('keyfile'),
             c[default_section].get('no-password'),
@@ -720,13 +722,13 @@ def decompose_path(path):
     """Process path into parent group and child item"""
 
     if '/' in path.strip('/'):
-        [group_path, child_name] = path.strip('/').rsplit('/', 1)
+        group_path, child_name = path.strip('/').rsplit('/', 1)
     else:
-        group_path = ''
-        child_name = path.strip('/')
+        group_path = path.rstrip('/') if path.endswith('/') else ''
+        child_name = path.lstrip('/') if path.startswith('/') else ''
 
     log.debug("Decomposed path into: '{}' and '{}'".format(group_path + '/', child_name))
-    return [group_path + '/', child_name]
+    return group_path + '/', child_name
 
 
 def add(args):
@@ -734,7 +736,7 @@ def add(args):
 
     kp = open_database(**vars(args))
 
-    [group_path, child_name] = decompose_path(args.path)
+    group_path, child_name = decompose_path(args.path)
     if not child_name:
         log.error(red("Path is invalid"))
         sys.exit(1)
@@ -892,7 +894,7 @@ def move(args):
         log.error(red("Moving elements between databases not supported"))
         sys.exit(1)
 
-    [group_path, child_name] = decompose_path(args.dest_path)
+    group_path, child_name = decompose_path(args.dest_path)
     # parent_group = get_group(dest_kp, group_path)
     parent_group = get_group(src_kp, group_path)
 
@@ -962,6 +964,49 @@ def info(args):
     print(green("Encryption Algorithm: ") + kp.encryption_algorithm)
     print(green("Database Version: ") + '.'.join(map(str, kp.version)))
 
+def login(args):
+    """Log in to database (mainly for caching purposes)"""
+
+    open_database(**vars(args))
+    print(green("Logged in to database"))
+
+def PathCompleter(prefix, parsed_args, **kwargs):
+    """List paths matching `prefix`"""
+
+    def list_matching_objects(query, kp, **kwargs):
+        # group selected? -> show subgroups and group entries
+        if '/' in query:
+            group_path, child_name = decompose_path(query)
+            group = kp.find_groups(path=group_path, first=True, **kwargs)
+
+            return (
+                kp.find_groups(name=child_name, group=group, **kwargs),
+                kp.find_entries(title=child_name, group=group, **kwargs)
+            )
+
+        # show first-level (i.e. in root group) groups and entries
+        return (
+            kp.find_groups(name=query, group=kp.root_group, **kwargs),
+            kp.find_entries(title=query, group=kp.root_group, **kwargs)
+        )
+
+    try:
+        kp = open_database(**vars(parsed_args))
+    except SystemExit:
+        # if `zenity` is missing, there is no way to supply password while completing
+        # use manual `login` command for database to be cached and path completion to work
+        warn(red("Log in") + " to database to " + bold("auto-complete paths"))
+        return []
+
+    groups, entries = list_matching_objects(
+        prefix, 
+        kp, 
+        regex=True,
+        recursive=False
+    )
+
+    return [g.name + "/" for g in groups] + [e.path for e in entries]
+
 
 def create_parser():
     """Create argparse object"""
@@ -977,7 +1022,7 @@ def create_parser():
 
     # process args for `list` command
     list_parser = subparsers.add_parser('list', aliases=['ls'], help="list entries in the database")
-    list_parser.add_argument('path', nargs='?', metavar='PATH', default=None, type=str, help=path_help)
+    list_parser.add_argument('path', nargs='?', metavar='PATH', default=None, type=str, help=path_help).completer = PathCompleter
     list_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis")
     list_parser.set_defaults(func=list_entries)
 
@@ -993,24 +1038,24 @@ def create_parser():
 
     # process args for `remove` command
     remove_parser = subparsers.add_parser('remove', aliases=['rm'], help="remove an entry")
-    remove_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
+    remove_parser.add_argument('path', metavar='PATH', type=str, help=path_help).completer = PathCompleter
     remove_parser.set_defaults(func=remove)
 
     # process args for `move` command
     move_parser = subparsers.add_parser('move', aliases=['mv'], help="move an entry or group")
-    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help=path_help)
-    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help=path_help)
+    move_parser.add_argument('src_path', metavar='SRC_PATH', type=str, help=path_help).completer = PathCompleter
+    move_parser.add_argument('dest_path', metavar='DEST_PATH', type=str, help=path_help).completer = PathCompleter
     move_parser.set_defaults(func=move)
 
     # process args for `show` command
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
-    show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
+    show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry").completer = PathCompleter
     show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
     show_parser.set_defaults(func=show)
 
     # process args for `edit` command
     edit_parser = subparsers.add_parser('edit', help="edit the contents of an entry or group")
-    edit_parser.add_argument('path', metavar='PATH', type=str, help=path_help)
+    edit_parser.add_argument('path', metavar='PATH', type=str, help=path_help).completer = PathCompleter
     edit_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
     edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
@@ -1046,11 +1091,15 @@ def create_parser():
     dump_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
     dump_parser.set_defaults(func=dump)
 
-    # process args for `dump` command
+    # process args for `info` command
     info_parser = subparsers.add_parser('info', help="print database information")
     info_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
     info_parser.set_defaults(func=info)
 
+    # process args for `login` command
+    login_parser = subparsers.add_parser('login', help="log in to database")
+    login_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
+    login_parser.set_defaults(func=login)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
@@ -1068,6 +1117,7 @@ def create_parser():
 def main():
 
     parser = create_parser()
+    argcomplete.autocomplete(parser, append_space=False)
     args = parser.parse_args()
 
     if args.debug:
