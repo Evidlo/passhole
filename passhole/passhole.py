@@ -1117,7 +1117,7 @@ def create_parser():
 def main():
 
     parser = create_parser()
-    argcomplete.autocomplete(parser, append_space=False)
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     if args.debug:
