@@ -963,6 +963,16 @@ def info(args):
     print(green("Database Version: ") + '.'.join(map(str, kp.version)))
 
 
+def kill(args):
+    """Kill background process"""
+
+    from pykeepass_cache.pykeepass_cache import close
+    try:
+        close()
+    except (FileNotFoundError, ConnectionRefusedError):
+        log.error(red("Background server is not running"))
+
+
 def create_parser():
     """Create argparse object"""
 
@@ -1050,6 +1060,10 @@ def create_parser():
     info_parser = subparsers.add_parser('info', help="print database information")
     info_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
     info_parser.set_defaults(func=info)
+
+    # process args for `kill` command
+    kill_parser = subparsers.add_parser('kill', help="kill background process")
+    kill_parser.set_defaults(func=kill)
 
 
     # optional arguments

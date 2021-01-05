@@ -45,6 +45,9 @@ list [-h] [--username] [PATH]
 grep [-h] [-i] [--field FIELD] PATTERN
     List entries with titles matching a regex pattern, where *PATTERN* is an `XSLT style`_ regular expression.  Use the --field *FIELD* option to search other string fields, where *FIELD* is one of *title*, *username*, *password*, *url*, or a custom field.  Use the -i option to enable case insensitive searching.
 
+kill [-h]
+    Kill the background server.
+
 .. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
 
 init [-h]
