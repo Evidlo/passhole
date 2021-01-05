@@ -141,16 +141,16 @@ More databases may be added using the init command or manually specified in the 
 .. code::
 
     [test]
-    ### Use this database as the default
+    # Use this database as the default
     # default: True
-    ### Path to database (required)
+    # Path to database (required)
     database: /path/to/test.kdbx
-    ### Path to keyfile.  if absent, assume no keyfile
+    # Path to keyfile.  if absent, assume no keyfile
     keyfile: /path/to/test.key
-    ### Does the database have a password?
+    # Does the database have a password?
     # no-password: True
-    ### Path to password cache.  If absent, don't cache password.
-    ### Must be unique for each database
+    # Path to password cache.  If absent, don't cache password.
+    # Must be unique for each database
     cache: ~/.cache/test_cache
 
 
