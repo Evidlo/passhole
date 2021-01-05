@@ -96,17 +96,21 @@ def boolean_input(prompt, default=True):
 
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
-    _, path = split_db_prefix(path)
+    if type(path) is str:
+        _, path = parse_path(path)
+        log.debug('FIXME: pathlist')
     group = kp.find_groups(path=path, first=True)
     if group is None:
-        log.error(red("No such group ") + bold(path))
+        log.error(red("No such group ") + bold('/'.join(path)))
         sys.exit(1)
     return group
 def get_entry(kp, path):
-    _, path = split_db_prefix(path)
+    if type(path) is str:
+        log.debug('FIXME: pathlist')
+        _, path = parse_path(path)
     entry = kp.find_entries(path=path, first=True)
     if entry is None:
-        log.error(red("No such entry ") + bold(path))
+        log.error(red("No such entry ") + bold('/'.join(path)))
         sys.exit(1)
     return entry
 def get_field(entry, field_input):
@@ -117,21 +121,34 @@ def get_field(entry, field_input):
     return field
 def no_entry(kp, path):
     if kp.find_entries(path=path, first=True):
-        log.error(red("There is already an entry at ") + bold(path))
+        log.error(red("There is already an entry at ") + bold('/'.join(path)))
         sys.exit(1)
 def no_group(kp, path):
     if kp.find_groups(path=path, first=True):
-        log.error(red("There is already group at ") + bold(path))
+        log.error(red("There is already group at ") + bold('/'.join(path)))
         sys.exit(1)
-def split_db_prefix(path):
-    if path.startswith('@'):
+def parse_path(path_str):
+    """Parse user entered path string into database name and path list
+
+    Args:
+        path_str (str): optionally '@' prefixed path to entry or group
+
+    Returns:
+        name (str, None): database name with '@' stripped, or None
+        path (str, None): list representing path, or None
+    """
+
+    # parse user entered path string into database name and list
+    log.debug(f'path_str: {path_str}')
+    path = path_str.split('/')
+    log.debug(f'path: {path}')
+    if path_str.startswith('@'):
         if '/' in path:
-            return path.lstrip('@').split('/', 1)
+            return path[0].lstrip('@'), path[1:]
         else:
-            # return path.lstrip('@'), ''
-            return path.lstrip('@'), None
+            return path[0].lstrip('@'), None
     else:
-        return None, path
+        return None, path[0:]
 # def join_db_prefix(prefix, path):
 #     if prefix is None:
 #         return path
@@ -447,7 +464,7 @@ def open_database(
         # open a specific database in config by name
         elif name is not None:
             if name not in c.sections():
-                log.error(red("No config section found for " + bold(section)))
+                log.error(red("No config section found for " + bold(name)))
                 sys.exit(1)
             return prompt_open(
                 name,
@@ -460,7 +477,7 @@ def open_database(
 
         # open a specific database in config using full Element path
         elif path is not None:
-            section, _ = split_db_prefix(path)
+            section, _ = parse_path(path)
             if section is None:
                 if default_section is None:
                     log.error(red("No default database specified in config"))
@@ -524,9 +541,9 @@ def type_entries(args):
             for entry in kp.entries:
                 if entry.title:
                     if len(databases) > 1:
-                        entry_text = "@{}/{}".format(name, entry.path)
+                        entry_text = "@{}/{}".format(name, '/'.join(entry.path))
                     else:
-                        entry_text = entry.path
+                        entry_text = '/'.join(entry.path)
                     if args.username:
                         entry_text += " ({})".format(entry.username)
                     entry_texts[entry_text] = kp
@@ -537,7 +554,7 @@ def type_entries(args):
         kp = open_database(**vars(args))
         for entry in kp.entries:
             if entry.title:
-                entry_text = entry.path
+                entry_text = '/'.join(entry.path)
                 if args.username:
                     entry_text += " ({})".format(entry.username)
                 entry_texts[entry_text] = kp
@@ -565,7 +582,7 @@ def type_entries(args):
         return
 
     kp = entry_texts[stdout]
-    _, selection_path = split_db_prefix(stdout)
+    _, selection_path = parse_path(stdout)
     selected_entry = get_entry(kp, selection_path)
 
     log.debug("selected_entry:{}".format(selected_entry))
@@ -713,20 +730,23 @@ def grep(args):
                 ' (default)' if position == 0 else ''
             ))
         for entry in entries:
-            print(entry.path)
+            print('/'.join(entry.path))
 
 
 def decompose_path(path):
-    """Process path into parent group and child item"""
+    """Process path into parent group and child item
 
-    if '/' in path.strip('/'):
-        [group_path, child_name] = path.strip('/').rsplit('/', 1)
+    Args:
+        path (list): path to item
+
+    Returns:
+        group_path (list): path to parent group
+        child_item (str): name of child entry/group
+    """
+    if len(path) >= 2:
+        return path[:-1], path[-1]
     else:
-        group_path = ''
-        child_name = path.strip('/')
-
-    log.debug("Decomposed path into: '{}' and '{}'".format(group_path + '/', child_name))
-    return [group_path + '/', child_name]
+        return [], path[0]
 
 
 def add(args):
@@ -734,7 +754,8 @@ def add(args):
 
     kp = open_database(**vars(args))
 
-    [group_path, child_name] = decompose_path(args.path)
+    _, path = parse_path(args.path)
+    [group_path, child_name] = decompose_path(path)
     if not child_name:
         log.error(red("Path is invalid"))
         sys.exit(1)
@@ -892,8 +913,8 @@ def move(args):
         log.error(red("Moving elements between databases not supported"))
         sys.exit(1)
 
-    [group_path, child_name] = decompose_path(args.dest_path)
-    # parent_group = get_group(dest_kp, group_path)
+    _, dest_path = parse_path(args.dest_path)
+    [group_path, child_name] = decompose_path(dest_path)
     parent_group = get_group(src_kp, group_path)
 
     # if source path is group
@@ -945,8 +966,6 @@ def move(args):
 
 def dump(args):
     """Pretty print database XML to console"""
-
-    from lxml import etree
 
     kp = open_database(**vars(args))
 
@@ -1056,7 +1075,7 @@ def create_parser():
     dump_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
     dump_parser.set_defaults(func=dump)
 
-    # process args for `dump` command
+    # process args for `info` command
     info_parser = subparsers.add_parser('info', help="print database information")
     info_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database")
     info_parser.set_defaults(func=info)
