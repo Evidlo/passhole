@@ -36,9 +36,9 @@ nocache_docker_debian:
 		/bin/bash
 
 docker_debian:
-	docker build \
+	podman build \
 		-t "passhole:debian" \
 		-f test/Dockerfile_debian .
-	docker run \
+	podman run \
 		-it "passhole:debian" \
 		/bin/bash
