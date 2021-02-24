@@ -140,10 +140,10 @@ def parse_path(path_str):
 
     # parse user entered path string into database name and list
     log.debug(f'path_str: {path_str}')
-    path = path_str.split('/')
+    path = path_str.rstrip('/').split('/')
     log.debug(f'path: {path}')
     if path_str.startswith('@'):
-        if '/' in path:
+        if len(path) >= 2:
             return path[0].lstrip('@'), path[1:]
         else:
             return path[0].lstrip('@'), None
@@ -737,13 +737,16 @@ def decompose_path(path):
     """Process path into parent group and child item
 
     Args:
-        path (list): path to item
+        path (list, None): path to item
 
     Returns:
         group_path (list): path to parent group
         child_item (str): name of child entry/group
     """
-    if len(path) >= 2:
+    if path is None or len(path) == 0:
+       log.error(red("Path is invalid"))
+       sys.exit(1)
+    elif len(path) >= 2:
         return path[:-1], path[-1]
     else:
         return [], path[0]
@@ -756,9 +759,6 @@ def add(args):
 
     _, path = parse_path(args.path)
     [group_path, child_name] = decompose_path(path)
-    if not child_name:
-        log.error(red("Path is invalid"))
-        sys.exit(1)
 
     log.debug("args.path:{}".format(args.path))
     log.debug("group_path:{} , child_name:{}".format(group_path, child_name))
@@ -1107,6 +1107,7 @@ def main():
         print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
         logging.getLogger('pykeepass_cache').setLevel(logging.DEBUG)
+        logging.getLogger('pykeepass.pykeepass').setLevel(logging.DEBUG)
 
     try:
         args.func(args)
