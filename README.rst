@@ -5,7 +5,7 @@ Passhole
    :target: https://matrix.to/#/#pykeepass:matrix.org
 
 
-``passhole`` is a commandline password manager inspired by `pass`_.
+``passhole`` is a commandline password manager for KeePass inspired by `pass`_.
 
 .. _pass: https://www.passwordstore.org
 
@@ -33,7 +33,7 @@ Features
 
 See below for examples and the `manual`_ (or ``man passhole``) for a complete list of commands and options.
 
-.. _manual: MANUAL.rst
+.. _manual: https://github.com/evidlo/passhole/MANUAL.rst
 
 Setup
 ------------
