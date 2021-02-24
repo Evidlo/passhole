@@ -1,6 +1,6 @@
 # test pip installation
 
-FROM debian:stretch
+FROM debian:testing
 MAINTAINER Evan Widloski "evan@evanw.org"
 
 RUN apt update
