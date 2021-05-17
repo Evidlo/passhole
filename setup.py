@@ -23,7 +23,8 @@ setup(
         "pynput",
         "pykeepass_cache",
         "colorama",
-        "future"
+        "future",
+        "pyotp"
     ],
     data_files=[
         ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),

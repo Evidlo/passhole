@@ -23,6 +23,7 @@ import logging
 import argparse
 from configparser import ConfigParser
 from collections import OrderedDict
+import pyotp
 
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
@@ -520,7 +521,8 @@ def type_entries(args):
     """Type out password using keyboard
 
     Selects an entry using `prog`, then sends the password to the keyboard.
-    If `tabbed` is true, both the username and password are typed, separated
+    If `totp` is true, generate and return totp
+    Else If `tabbed` is true, both the username and password are typed, separated
     by a tab"""
 
     from Xlib.error import DisplayNameError
@@ -596,24 +598,38 @@ def type_entries(args):
 
     # type out password
     k = Controller()
-    if args.tabbed:
-        if selected_entry.username:
+    if args.totp:
+        totp = None
+        if selected_entry._get_string_field('otp'):
+            totp = pyotp.parse_uri(selected_entry._get_string_field('otp'))
+        elif selected_entry._get_string_field('TOTP Seed'):
+            totp = pyotp.TOTP(selected_entry._get_string_field('TOTP Seed'))
+        if totp:
             if args.xdotool:
-                call_xdotool(['type', selected_entry.username])
-                call_xdotool(['key', 'Tab'])
+                call_xdotool(['type', totp.now()])
             else:
-                k.type(selected_entry.username)
-                k.press(Key.tab)
-                k.release(Key.tab)
+                k.type(totp.now())
         else:
-            log.warning("Selected entry does not have a username")
-    if selected_entry.password:
-        if args.xdotool:
-            call_xdotool(['type', selected_entry.password])
+            log.warning("Selected entry does not have a totp setup")
+    else: 
+        if args.tabbed:
+            if selected_entry.username:
+                if args.xdotool:
+                    call_xdotool(['type', selected_entry.username])
+                    call_xdotool(['key', 'Tab'])
+                else:
+                    k.type(selected_entry.username)
+                    k.press(Key.tab)
+                    k.release(Key.tab)
+            else:
+                log.warning("Selected entry does not have a username")
+        if selected_entry.password:
+            if args.xdotool:
+                call_xdotool(['type', selected_entry.password])
+            else:
+                k.type(selected_entry.password)
         else:
-            k.type(selected_entry.password)
-    else:
-        log.warning("Selected entry does not have a password")
+            log.warning("Selected entry does not have a password")
 
 
 def show(args):
@@ -640,6 +656,12 @@ def show(args):
         print(green("URL: ") + (entry.url or ''))
         for field_name, field_value in entry.custom_properties.items():
             print(green("{}: ".format(field_name)) + str(field_value or ''))
+            if field_name == 'otp':
+                totp = pyotp.parse_uri(field_value)
+                print(green("TOTP using 'otp': ") + str(totp.now() or ''))
+            elif field_name == 'TOTP Seed':
+                totp = pyotp.TOTP(field_value)
+                print(green("TOTP using 'TOTP Seed': ") + str(totp.now() or ''))
         print(green("Created: ") + entry.ctime.isoformat())
         print(green("Modified: ") + entry.mtime.isoformat())
 
@@ -1050,6 +1072,7 @@ def create_parser():
     type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
     type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call for entry selection")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
+    type_parser.add_argument('--totp', action='store_true', default=False, help="type current totp")
     type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
     type_parser.set_defaults(func=type_entries)
