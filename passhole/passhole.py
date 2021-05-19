@@ -522,9 +522,8 @@ def type_entries(args):
 
     Selects an entry using `prog`, then sends the password to the keyboard.
     If `tabbed` is true, both the username and password are typed, separated
-    by a tab
-    Else If `totp` is true, generate and return totp, 
-    no passward is returned in this case"""
+    by a tab.  If `totp` is true, generate and type totp.
+    """
 
     from Xlib.error import DisplayNameError
 
@@ -597,7 +596,7 @@ def type_entries(args):
             log.error(bold("xdotool ") + red("not found"))
             sys.exit(1)
 
-    # type out password
+    # type out username/password
     k = Controller()
     if args.tabbed:
         if selected_entry.username:
@@ -610,12 +609,13 @@ def type_entries(args):
                 k.release(Key.tab)
         else:
             log.warning("Selected entry does not have a username")
+    # parse OTP field and type
     elif args.totp:
         totp = None
-        if selected_entry._get_string_field('otp'):
-            totp = pyotp.parse_uri(selected_entry._get_string_field('otp'))
-        elif selected_entry._get_string_field('TOTP Seed'):
-            totp = pyotp.TOTP(selected_entry._get_string_field('TOTP Seed'))
+        if 'otp' in selected_entry.custom_properties:
+            totp = pyotp.parse_uri(selected_entry.custom_properties['otp'])
+        elif 'TOTP Seed' in selected_entry.custom_properties:
+            totp = pyotp.TOTP(selected_entry.custom_properties['TOTP Seed'])
         if totp:
             if args.xdotool:
                 call_xdotool(['type', totp.now()])
@@ -623,7 +623,8 @@ def type_entries(args):
                 k.type(totp.now())
         else:
             log.warning("Selected entry does not have a totp setup")
-    if selected_entry.password and not args.totp:
+    # type out password only
+    elif selected_entry.password:
         if args.xdotool:
             call_xdotool(['type', selected_entry.password])
         else:
