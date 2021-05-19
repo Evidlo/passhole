@@ -9,7 +9,7 @@ from builtins import input
 from .version import __version__
 import subprocess
 from getpass import getpass
-from 0 import Fore, Back, Style
+from colorama import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
 import readline
