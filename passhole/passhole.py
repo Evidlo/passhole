@@ -9,7 +9,7 @@ from builtins import input
 from .version import __version__
 import subprocess
 from getpass import getpass
-from colorama import Fore, Back, Style
+from 0 import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
 import readline
@@ -521,9 +521,10 @@ def type_entries(args):
     """Type out password using keyboard
 
     Selects an entry using `prog`, then sends the password to the keyboard.
-    If `totp` is true, generate and return totp
-    Else If `tabbed` is true, both the username and password are typed, separated
-    by a tab"""
+    If `tabbed` is true, both the username and password are typed, separated
+    by a tab
+    Else If `totp` is true, generate and return totp, 
+    no passward is returned in this case"""
 
     from Xlib.error import DisplayNameError
 
@@ -598,7 +599,18 @@ def type_entries(args):
 
     # type out password
     k = Controller()
-    if args.totp:
+    if args.tabbed:
+        if selected_entry.username:
+            if args.xdotool:
+                call_xdotool(['type', selected_entry.username])
+                call_xdotool(['key', 'Tab'])
+            else:
+                k.type(selected_entry.username)
+                k.press(Key.tab)
+                k.release(Key.tab)
+        else:
+            log.warning("Selected entry does not have a username")
+    elif args.totp:
         totp = None
         if selected_entry._get_string_field('otp'):
             totp = pyotp.parse_uri(selected_entry._get_string_field('otp'))
@@ -611,25 +623,13 @@ def type_entries(args):
                 k.type(totp.now())
         else:
             log.warning("Selected entry does not have a totp setup")
-    else: 
-        if args.tabbed:
-            if selected_entry.username:
-                if args.xdotool:
-                    call_xdotool(['type', selected_entry.username])
-                    call_xdotool(['key', 'Tab'])
-                else:
-                    k.type(selected_entry.username)
-                    k.press(Key.tab)
-                    k.release(Key.tab)
-            else:
-                log.warning("Selected entry does not have a username")
-        if selected_entry.password:
-            if args.xdotool:
-                call_xdotool(['type', selected_entry.password])
-            else:
-                k.type(selected_entry.password)
+    if selected_entry.password and not args.totp:
+        if args.xdotool:
+            call_xdotool(['type', selected_entry.password])
         else:
-            log.warning("Selected entry does not have a password")
+            k.type(selected_entry.password)
+    elif not args.totp:
+        log.warning("Selected entry does not have a password")
 
 
 def show(args):
