@@ -1,3 +1,20 @@
+1.9.6 - 2021-05-22
+------------------
+- TOTP support
+
+1.9.5 - 2021
+------------------
+- switch to podman for testing
+- change default database and key location
+- add 'kill' command
+- allow 'init' to work noninteractively
+- fix #46
+- fix #42 - exit with error code 1 on error
+
+1.9.4 - 2020-01-20
+------------------
+- add --cache-timeout
+
 1.9.2 - 2019-01-18
 ------------------
 - fix 'edit' protecting password text
