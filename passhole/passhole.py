@@ -598,19 +598,8 @@ def type_entries(args):
 
     # type out username/password
     k = Controller()
-    if args.tabbed:
-        if selected_entry.username:
-            if args.xdotool:
-                call_xdotool(['type', selected_entry.username])
-                call_xdotool(['key', 'Tab'])
-            else:
-                k.type(selected_entry.username)
-                k.press(Key.tab)
-                k.release(Key.tab)
-        else:
-            log.warning("Selected entry does not have a username")
     # parse OTP field and type
-    elif args.totp:
+    if args.totp:
         totp = None
         if 'otp' in selected_entry.custom_properties:
             totp = pyotp.parse_uri(selected_entry.custom_properties['otp'])
@@ -623,14 +612,26 @@ def type_entries(args):
                 k.type(totp.now())
         else:
             log.warning("Selected entry does not have a totp setup")
-    # type out password only
-    elif selected_entry.password:
-        if args.xdotool:
-            call_xdotool(['type', selected_entry.password])
+    else:
+        if args.tabbed:
+            if selected_entry.username:
+                if args.xdotool:
+                    call_xdotool(['type', selected_entry.username])
+                    call_xdotool(['key', 'Tab'])
+                else:
+                    k.type(selected_entry.username)
+                    k.press(Key.tab)
+                    k.release(Key.tab)
+            else:
+                log.warning("Selected entry does not have a username")
+        # type out password only
+        if selected_entry.password:
+            if args.xdotool:
+                call_xdotool(['type', selected_entry.password])
+            else:
+                k.type(selected_entry.password)
         else:
-            k.type(selected_entry.password)
-    elif not args.totp:
-        log.warning("Selected entry does not have a password")
+            log.warning("Selected entry does not have a password")
 
 
 def show(args):
