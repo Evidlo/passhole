@@ -141,3 +141,10 @@ See also
 .. _kpcli: http://kpcli.sourceforge.net/
 .. _keepassxc: https://keepassxc.org/
 .. _kdbxpasswordpwned: https://github.com/fopina/kdbxpasswordpwned
+
+Build Dependencies
+---------------------------
+
+Alpine
+
+    apk add gcc libffi-dev py3-lxml py3-pip python3-dev libc-dev
