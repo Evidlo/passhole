@@ -99,7 +99,7 @@ def boolean_input(prompt, default=True):
 def get_group(kp, path):
     if type(path) is str:
         _, path = parse_path(path)
-        log.debug('FIXME: pathlist')
+        log.error('FIXME: pathlist')
     group = kp.find_groups(path=path, first=True)
     if group is None:
         log.error(red("No such group ") + bold('/'.join(path)))
@@ -107,7 +107,7 @@ def get_group(kp, path):
     return group
 def get_entry(kp, path):
     if type(path) is str:
-        log.debug('FIXME: pathlist')
+        log.error('FIXME: pathlist')
         _, path = parse_path(path)
     entry = kp.find_entries(path=path, first=True)
     if entry is None:
@@ -121,10 +121,16 @@ def get_field(entry, field_input):
         sys.exit(1)
     return field
 def no_entry(kp, path):
+    if type(path) is str:
+        log.error('FIXME: pathlist')
+        _, path = parse_path(path)
     if kp.find_entries(path=path, first=True):
         log.error(red("There is already an entry at ") + bold('/'.join(path)))
         sys.exit(1)
 def no_group(kp, path):
+    if type(path) is str:
+        log.error('FIXME: pathlist')
+        _, path = parse_path(path)
     if kp.find_groups(path=path, first=True):
         log.error(red("There is already group at ") + bold('/'.join(path)))
         sys.exit(1)
@@ -639,7 +645,8 @@ def show(args):
 
     kp = open_database(**vars(args))
 
-    entry = get_entry(kp, args.path)
+    _, path = parse_path(args.path)
+    entry = get_entry(kp, path)
     # show specified field
     if args.field:
         # handle lowercase field input gracefully
@@ -784,19 +791,16 @@ def add(args):
     _, path = parse_path(args.path)
     [group_path, child_name] = decompose_path(path)
 
-    log.debug("args.path:{}".format(args.path))
-    log.debug("group_path:{} , child_name:{}".format(group_path, child_name))
-
     parent_group = get_group(kp, group_path)
 
     # create a new group
     if args.path.endswith('/'):
-        no_group(kp, args.path)
+        no_group(kp, path)
         kp.add_group(parent_group, child_name)
 
     # create a new entry
     else:
-        no_entry(kp, args.path)
+        no_entry(kp, path)
         username = editable_input('Username')
 
         # use urandom for number generation
@@ -859,10 +863,11 @@ def remove(args):
     """Remove an Entry/Group"""
 
     kp = open_database(**vars(args))
+    _, path = parse_path(args.path)
 
     # remove a group
     if args.path.endswith('/'):
-        group = get_group(kp, args.path)
+        group = get_group(kp, path)
         if len(group.entries) > 0:
             log.error(red("Non-empty group ") + bold(args.path))
             sys.exit(1)
@@ -870,7 +875,7 @@ def remove(args):
 
     # remove an entry
     else:
-        entry = get_entry(kp, args.path)
+        entry = get_entry(kp, path)
         entry.delete()
 
     kp.save()
@@ -880,10 +885,11 @@ def edit(args):
     """Edit fields of an Entry"""
 
     kp = open_database(**vars(args))
+    _, path = parse_path(args.path)
 
     # edit group name
     if args.path.endswith('/'):
-        group = get_group(kp, args.path)
+        group = get_group(kp, path)
 
         if args.set:
             field = args.set[0]
@@ -898,7 +904,7 @@ def edit(args):
             group.name = value
 
     else:
-        entry = get_entry(kp, args.path)
+        entry = get_entry(kp, path)
 
         # edit specific field
         if args.field:
