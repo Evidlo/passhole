@@ -470,6 +470,8 @@ def open_database(
 
         # open a specific database in config by name
         elif name is not None:
+            # allow name to start with @
+            name = name.lstrip('@')
             if name not in c.sections():
                 log.error(red("No config section found for " + bold(name)))
                 sys.exit(1)
