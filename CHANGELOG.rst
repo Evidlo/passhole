@@ -1,3 +1,8 @@
+1.9.8 - 2022-04-22
+------------------
+- fix #51 - fix `--username` for type command
+- allow database name to start with @
+
 1.9.6 - 2021-05-22
 ------------------
 - TOTP support
