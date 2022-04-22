@@ -554,7 +554,7 @@ def type_entries(args):
                         entry_text = '/'.join(entry.path)
                     if args.username:
                         entry_text += " ({})".format(entry.username)
-                    entry_texts[entry_text] = kp
+                    entry_texts[entry_text] = entry
         dmenu_text = '\n'.join(sorted(entry_texts.keys()))
 
     # type from specific database
@@ -565,7 +565,7 @@ def type_entries(args):
                 entry_text = '/'.join(entry.path)
                 if args.username:
                     entry_text += " ({})".format(entry.username)
-                entry_texts[entry_text] = kp
+                entry_texts[entry_text] = entry
         dmenu_text = '\n'.join(sorted(entry_texts.keys()))
 
 
@@ -589,9 +589,11 @@ def type_entries(args):
         log.warning("No path returned by {}".format(args.prog))
         return
 
-    kp = entry_texts[stdout]
-    _, selection_path = parse_path(stdout)
-    selected_entry = get_entry(kp, selection_path)
+    # kp = entry_texts[stdout]
+    # _, selection_path = parse_path(stdout)
+    # selected_entry = get_entry(kp, selection_path)
+
+    selected_entry = entry_texts[stdout]
 
     log.debug("selected_entry:{}".format(selected_entry))
 
