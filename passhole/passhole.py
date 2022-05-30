@@ -59,7 +59,8 @@ reserved_fields = {
     'url':'URL',
     'password':'Password',
     'notes':'Notes',
-    'title': 'Title'
+    'title': 'Title',
+    'totp': 'Totp'
 }
 
 
@@ -116,6 +117,8 @@ def get_entry(kp, path):
     return entry
 def get_field(entry, field_input):
     field = reserved_fields.get(field_input, field_input)
+    if field == 'Totp':
+        return field
     if field not in entry._get_string_field_keys():
         log.error(red("No such field ") + bold(field_input))
         sys.exit(1)
@@ -655,6 +658,10 @@ def show(args):
     if args.field:
         # handle lowercase field input gracefully
         field = get_field(entry, args.field)
+        if field == "Totp":
+            totp = pyotp.parse_uri(entry.custom_properties['otp'])
+            print(str(totp.now()))
+            return
         print(entry._get_string_field(field), end='')
 
     # otherwise, show all fields
