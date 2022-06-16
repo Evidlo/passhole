@@ -1142,7 +1142,7 @@ def main():
         print('Debugging enabled...')
         log.setLevel(logging.DEBUG)
         logging.getLogger('pykeepass_cache').setLevel(logging.DEBUG)
-        logging.getLogger('pykeepass.pykeepass').setLevel(logging.DEBUG)
+        logging.getLogger('pykeepass').setLevel(logging.DEBUG)
 
     try:
         args.func(args)

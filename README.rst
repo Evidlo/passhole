@@ -43,7 +43,7 @@ Setup
    pip install passhole
    ph init
    
-   # install zenity for password prompt 
+   # install zenity for graphical password prompt
 
 
 Example Usage
@@ -52,32 +52,32 @@ Example Usage
 .. code:: bash
 
    # add a new entry with manually created password
-   >>> ph add github
+   $ ph add github
    Username: Evidlo
    Password: 
    Confirm: 
    URL: github.com
 
    # add an entry with a generated alphanumeric password
-   >>> ph add neopets -a
+   $ ph add neopets -a
    Username: Evidlo
    URL: neopets.com
 
    # add a new group
-   >>> ph add social/
+   $ ph add social/
    
    # add an entry to `social/` with a 32 character password (alphanumeric + symbols)
-   >>> ph add social/facebook -s 32
+   $ ph add social/facebook -s 32
    Username: evan@evanw.org
    URL: facebook.com
 
    # add an entry to `social/` with a correct-horse-battery-staple type password
-   >>> ph add social/twitter -w
+   $ ph add social/twitter -w
    Username: evan@evanw.org
    URL: twitter.com
 
    # list all entries
-   >>> ph list
+   $ ph list
    github
    neopets
    [social]
@@ -85,14 +85,14 @@ Example Usage
    └── twitter
 
    # display contents of entry
-   >>> ph show social/twitter
+   $ ph show social/twitter
    Title: twitter
    Username: Evidlo
    Password: inns.ambien.travelling.throw.force
    URL: twitter.com
 
    # retrieve contents of specific field for use in scripts
-   >>> ph show social/twitter --field password
+   $ ph show social/twitter --field password
    inns.ambien.travelling.throw.force
 
 Example i3wm Keybindings
