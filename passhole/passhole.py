@@ -1032,6 +1032,11 @@ def kill(args):
     except (FileNotFoundError, ConnectionRefusedError):
         log.error(red("Background server is not running"))
 
+def restart(args):
+    """Restart background process"""
+
+    kill(args)
+    open_database(**vars(args))
 
 def create_parser():
     """Create argparse object"""
@@ -1126,6 +1131,9 @@ def create_parser():
     kill_parser = subparsers.add_parser('kill', help="kill background process")
     kill_parser.set_defaults(func=kill)
 
+    # process args for `restart` command
+    restart_parser = subparsers.add_parser('restart', help="restart background process")
+    restart_parser.set_defaults(func=restart)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
