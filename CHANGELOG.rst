@@ -1,5 +1,7 @@
+1.9.9 - 2022-06-21
 ------------------
 - added --totp flag to `show` command
+- added `restart` command
 
 1.9.8 - 2022-04-22
 ------------------
