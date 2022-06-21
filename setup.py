@@ -26,6 +26,7 @@ setup(
         "colorama",
         "future",
         "pyotp",
+        "qrcode",
     ],
     data_files=[
         ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),
