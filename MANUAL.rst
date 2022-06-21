@@ -48,7 +48,8 @@ grep [-h] [-i] [--field FIELD] PATTERN
 kill [-h]
     Kill the background server.
 
-.. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
+restart [-h]
+    Restart the background server.
 
 init [-h]
     Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See --database and --keyfile to initialize in a non-default location.
