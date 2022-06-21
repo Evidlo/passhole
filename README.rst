@@ -34,7 +34,7 @@ Features
 
 See below for examples and the `manual`_ (or ``man passhole``) for a complete list of commands and options.
 
-.. _manual: https://github.com/evidlo/passhole/MANUAL.rst
+.. _manual: https://github.com/evidlo/passhole/tree/master/MANUAL.rst
 
 Setup
 ------------
