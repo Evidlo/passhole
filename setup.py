@@ -21,10 +21,11 @@ setup(
     },
     install_requires=[
         "pynput",
+        "pykeepass>=4.0.3"
         "pykeepass_cache",
         "colorama",
         "future",
-        "pyotp"
+        "pyotp",
     ],
     data_files=[
         ('share/man/man1', ['passhole.1'] if os.path.exists('passhole.1') else []),
