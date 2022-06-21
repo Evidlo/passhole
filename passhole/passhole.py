@@ -59,7 +59,8 @@ reserved_fields = {
     'url':'URL',
     'password':'Password',
     'notes':'Notes',
-    'title': 'Title'
+    'title': 'Title',
+    'totp': 'otp'
 }
 
 
@@ -540,6 +541,7 @@ def type_entries(args):
     except DisplayNameError:
         log.error(red("No X11 session found"))
 
+    # build up a dictionary mapping strings (shown in dmenu) to entries
     entry_texts = {}
 
     # type from all databases
@@ -610,18 +612,17 @@ def type_entries(args):
     k = Controller()
     # parse OTP field and type
     if args.totp:
-        totp = None
-        if 'otp' in selected_entry.custom_properties:
-            totp = pyotp.parse_uri(selected_entry.custom_properties['otp'])
-        elif 'TOTP Seed' in selected_entry.custom_properties:
-            totp = pyotp.TOTP(selected_entry.custom_properties['TOTP Seed'])
-        if totp:
+        otp = None
+        if selected_entry.otp is not None:
+            otp = pyotp.parse_uri(selected_entry.otp)
+        if otp is not None:
             if args.xdotool:
-                call_xdotool(['type', totp.now()])
+                call_xdotool(['type', otp.now()])
             else:
-                k.type(totp.now())
+                k.type(otp.now())
         else:
-            log.warning("Selected entry does not have a totp setup")
+            log.error(red("Selected entry has no OTP field"))
+            sys.exit(1)
     else:
         if args.tabbed:
             if selected_entry.username:
@@ -651,11 +652,19 @@ def show(args):
 
     _, path = parse_path(args.path)
     entry = get_entry(kp, path)
+
     # show specified field
     if args.field:
         # handle lowercase field input gracefully
         field = get_field(entry, args.field)
         print(entry._get_string_field(field), end='')
+
+    elif args.totp:
+        if entry.otp is None:
+            log.error(red("Entry has no OTP field"))
+            sys.exit(1)
+        import pyotp
+        print(pyotp.parse_uri(entry.otp).now(), end='')
 
     # otherwise, show all fields
     else:
@@ -667,14 +676,19 @@ def show(args):
             Fore.RESET + Back.RESET
         )
         print(green("URL: ") + (entry.url or ''))
+        if entry.otp is not None:
+            print(green("OTP: ") + (entry.otp or ''))
+            import pyotp
+            import qrcode
+            # generate QR code for seed
+            qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L, border=1)
+            qr.add_data(entry.otp)
+            qr.print_ascii()
+            print(green("OTP Code: ") + pyotp.parse_uri(entry.otp).now())
+        # print custom fields
         for field_name, field_value in entry.custom_properties.items():
             print(green("{}: ".format(field_name)) + str(field_value or ''))
-            if field_name == 'otp':
-                totp = pyotp.parse_uri(field_value)
-                print(green("TOTP using 'otp': ") + str(totp.now() or ''))
-            elif field_name == 'TOTP Seed':
-                totp = pyotp.TOTP(field_value)
-                print(green("TOTP using 'TOTP Seed': ") + str(totp.now() or ''))
+
         print(green("Created: ") + entry.ctime.isoformat())
         print(green("Modified: ") + entry.mtime.isoformat())
 
@@ -737,6 +751,7 @@ def list_entries(args):
         # if entry, print entry contents
         else:
             args.field = None
+            args.totp = None
             show(args)
 
 
@@ -1025,6 +1040,11 @@ def kill(args):
     except (FileNotFoundError, ConnectionRefusedError):
         log.error(red("Background server is not running"))
 
+def restart(args):
+    """Restart background process"""
+
+    kill(args)
+    open_database(**vars(args))
 
 def create_parser():
     """Create argparse object"""
@@ -1069,6 +1089,7 @@ def create_parser():
     show_parser = subparsers.add_parser('show', help="show the contents of an entry")
     show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
     show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
+    show_parser.add_argument('--totp', action='store_true', default=False, help="get entry TOTP")
     show_parser.set_defaults(func=show)
 
     # process args for `edit` command
@@ -1084,7 +1105,7 @@ def create_parser():
     type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
     type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call for entry selection")
     type_parser.add_argument('--tabbed', action='store_true', default=False, help="type both username and password (tab separated)")
-    type_parser.add_argument('--totp', action='store_true', default=False, help="type current totp")
+    type_parser.add_argument('--totp', action='store_true', default=False, help="type entry TOTP")
     type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
     type_parser.set_defaults(func=type_entries)
@@ -1119,6 +1140,9 @@ def create_parser():
     kill_parser = subparsers.add_parser('kill', help="kill background process")
     kill_parser.set_defaults(func=kill)
 
+    # process args for `restart` command
+    restart_parser = subparsers.add_parser('restart', help="restart background process")
+    restart_parser.set_defaults(func=restart)
 
     # optional arguments
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")

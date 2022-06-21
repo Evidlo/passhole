@@ -18,11 +18,11 @@ SYNOPSIS
 COMMANDS
 ========
 
-show [-h] [--field FIELD] PATH
-    Show the contents of an entry, where *PATH* is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use --field *FIELD* to print only the specified field, where *FIELD* is one of  'title', 'username', 'password', 'url', or a custom field.
+show [-h] [--field FIELD] [--totp] PATH
+    Show the contents of an entry, where *PATH* is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use --field *FIELD* to print only the specified field, where *FIELD* is one of  'title', 'username', 'password', 'url', or a custom field.  The --totp option will parse any OTP URIs and print the code.
 
 type [-h] [--prog PROG] [--tabbed] [--totp] [--username] [--xdotool] [name]
-    Automatically type out the password as if the user had typed it on the keyboard, where *PROG* is a dmenu-like program for selecting an entry.  *PROG* defaults to 'dmenu'.  This is useful when you want to automatically fill a selected password field in any application.  *name* is the name of the database to type from.  If not given, type from all databases.  Use the --tabbed option to type out the username then password, separated by a tab. Use the --totp option to generate and type totp using 'otp' or 'TOTP Seed' attribute. Use the --username option to show entry username in parenthesis during selection.  Use the --xdotool option to use xdotool instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.
+    Automatically type out the password as if the user had typed it on the keyboard, where *PROG* is a dmenu-like program for selecting an entry.  *PROG* defaults to 'dmenu'.  This is useful when you want to automatically fill a selected password field in any application.  *name* is the name of the database to type from.  If not given, type from all databases.  Use the --tabbed option to type out the username then password, separated by a tab. Use the --totp option to generate and type otp using 'otp' attribute. Use the --username option to show entry username in parenthesis during selection.  Use the --xdotool option to use xdotool instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.
 
 add [-h] [-w [LENGTH] | -a [LENGTH] | -s [LENGTH]] [--append STR] [--fields FIELD1,...] PATH
     Add a new entry/group to the database, where *PATH* is the full path to the entry or group.  Use -w, -a, or -s to generate a `correct horse battery staple`_, alphanumeric, or alphanumeric + symbolic password, respectively.  *LENGTH* defaults to 5 words for -w and 32 characters for -a and -s unless otherwise specified.  Use --append to append *STR* to the end of the generated password to meet specific password requirements.  Use --fields to specify a comma separated list of custom fields to prompt for during entry creation.
@@ -45,10 +45,13 @@ list [-h] [--username] [PATH]
 grep [-h] [-i] [--field FIELD] PATTERN
     List entries with titles matching a regex pattern, where *PATTERN* is an `XSLT style`_ regular expression.  Use the --field *FIELD* option to search other string fields, where *FIELD* is one of *title*, *username*, *password*, *url*, or a custom field.  Use the -i option to enable case insensitive searching.
 
+.. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
+
 kill [-h]
     Kill the background server.
 
-.. _XSLT style: https://www.xml.com/pub/a/2003/06/04/tr.html
+restart [-h]
+    Restart the background server.
 
 init [-h]
     Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See --database and --keyfile to initialize in a non-default location.
