@@ -1,3 +1,6 @@
+------------------
+- added --totp flag to `show` command
+
 1.9.8 - 2022-04-22
 ------------------
 - fix #51 - fix `--username` for type command

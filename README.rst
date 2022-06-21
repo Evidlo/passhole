@@ -28,6 +28,7 @@ Features
 - temporarily cache database password (by default for 10 minutes)
 - multiple databases
 - supports KeePass v3 and v4 databases
+- supports TOTP
 
 .. _correct horse battery staple: http://xkcd.com/936
 

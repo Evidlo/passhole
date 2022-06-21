@@ -18,8 +18,8 @@ SYNOPSIS
 COMMANDS
 ========
 
-show [-h] [--field FIELD] PATH
-    Show the contents of an entry, where *PATH* is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use --field *FIELD* to print only the specified field, where *FIELD* is one of  'title', 'username', 'password', 'url', or a custom field.
+show [-h] [--field FIELD] [--totp] PATH
+    Show the contents of an entry, where *PATH* is the full path to the entry.  The password field is spoilered and must be highlighted to reveal the plaintext password.  Use --field *FIELD* to print only the specified field, where *FIELD* is one of  'title', 'username', 'password', 'url', or a custom field.  The --totp option will parse any OTP URIs and print the code.
 
 type [-h] [--prog PROG] [--tabbed] [--totp] [--username] [--xdotool] [name]
     Automatically type out the password as if the user had typed it on the keyboard, where *PROG* is a dmenu-like program for selecting an entry.  *PROG* defaults to 'dmenu'.  This is useful when you want to automatically fill a selected password field in any application.  *name* is the name of the database to type from.  If not given, type from all databases.  Use the --tabbed option to type out the username then password, separated by a tab. Use the --totp option to generate and type totp using 'otp' or 'TOTP Seed' attribute. Use the --username option to show entry username in parenthesis during selection.  Use the --xdotool option to use xdotool instead of the Python keyboard library.  Useful for handling unicode input.  Note that this command is intended to be invoked via keyboard shortcut.
