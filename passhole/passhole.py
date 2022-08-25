@@ -25,7 +25,6 @@ from configparser import ConfigParser
 from collections import OrderedDict
 import pyotp
 
-
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 # hide INFO messages from pykeepass
 logging.getLogger("pykeepass").setLevel(logging.WARNING)
@@ -99,7 +98,7 @@ def boolean_input(prompt, default=True):
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
     if type(path) is str:
-        _, path = parse_path(path)
+        _, path, _ = parse_path(path)
         log.error('FIXME: pathlist')
     group = kp.find_groups(path=path, first=True)
     if group is None:
@@ -109,7 +108,7 @@ def get_group(kp, path):
 def get_entry(kp, path):
     if type(path) is str:
         log.error('FIXME: pathlist')
-        _, path = parse_path(path)
+        _, path, _ = parse_path(path)
     entry = kp.find_entries(path=path, first=True)
     if entry is None:
         log.error(red("No such entry ") + bold('/'.join(path)))
@@ -124,39 +123,39 @@ def get_field(entry, field_input):
 def no_entry(kp, path):
     if type(path) is str:
         log.error('FIXME: pathlist')
-        _, path = parse_path(path)
+        _, path, _ = parse_path(path)
     if kp.find_entries(path=path, first=True):
         log.error(red("There is already an entry at ") + bold('/'.join(path)))
         sys.exit(1)
 def no_group(kp, path):
     if type(path) is str:
         log.error('FIXME: pathlist')
-        _, path = parse_path(path)
+        _, path, _ = parse_path(path)
     if kp.find_groups(path=path, first=True):
         log.error(red("There is already group at ") + bold('/'.join(path)))
         sys.exit(1)
 def parse_path(path_str):
-    """Parse user entered path string into database name and path list
+    """Parse user entered path string into database name, item path, and type
 
     Args:
         path_str (str): optionally '@' prefixed path to entry or group
 
     Returns:
-        name (str, None): database name with '@' stripped, or None
-        path (str, None): list representing path, or None
+        item (Item): parsed result
     """
 
     # parse user entered path string into database name and list
     log.debug(f'path_str: {path_str}')
     path = path_str.rstrip('/').split('/')
+    element_type = 'group' if path_str.endswith('/') else 'entry'
     log.debug(f'path: {path}')
     if path_str.startswith('@'):
         if len(path) >= 2:
-            return path[0].lstrip('@'), path[1:]
+            return path[0].lstrip('@'), path[1:], element_type
         else:
-            return path[0].lstrip('@'), None
+            return path[0].lstrip('@'), None, 'database'
     else:
-        return None, path[0:]
+        return None, path[0:], element_type
 # def join_db_prefix(prefix, path):
 #     if prefix is None:
 #         return path
@@ -487,7 +486,7 @@ def open_database(
 
         # open a specific database in config using full Element path
         elif path is not None:
-            section, _ = parse_path(path)
+            section, _, _ = parse_path(path)
             if section is None:
                 if default_section is None:
                     log.error(red("No default database specified in config"))
@@ -594,7 +593,7 @@ def type_entries(args):
         return
 
     # kp = entry_texts[stdout]
-    # _, selection_path = parse_path(stdout)
+    # _, selection_path, _ = parse_path(stdout)
     # selected_entry = get_entry(kp, selection_path)
 
     selected_entry = entry_texts[stdout]
@@ -650,7 +649,7 @@ def show(args):
 
     kp = open_database(**vars(args))
 
-    _, path = parse_path(args.path)
+    _, path, _ = parse_path(args.path)
     entry = get_entry(kp, path)
 
     # show specified field
@@ -725,8 +724,9 @@ def list_entries(args):
                 print(prefix + branch_tee + blue(bold(str(group.name))))
                 list_items(group, prefix + branch_pipe)
 
+    dbname, path, kind = parse_path(args.path)
     # print all databases
-    if args.path is None:
+    if dbname is None:
         databases = open_database(all=True, **vars(args))
         for position, (name, kp) in enumerate(databases):
             # print names for config-provided databases
@@ -741,12 +741,11 @@ def list_entries(args):
     # print specific database
     else:
         kp = open_database(**vars(args))
-        # FIXME: write a function: parse_path -> type (db, group, entry)
         # if group, list items
-        if args.path.endswith('/'):
+        if kind == 'group':
             list_items(get_group(kp, args.path), "", show_branches=False)
         # if db, list items in root group
-        elif args.path.startswith('@') and '/' not in args.path:
+        elif kind == 'database':
             list_items(kp.root_group, "", show_branches=False)
         # if entry, print entry contents
         else:
@@ -807,13 +806,13 @@ def add(args):
 
     kp = open_database(**vars(args))
 
-    _, path = parse_path(args.path)
-    [group_path, child_name] = decompose_path(path)
+    _, path, kind = parse_path(args.path)
+    group_path, child_name = decompose_path(path)
 
     parent_group = get_group(kp, group_path)
 
     # create a new group
-    if args.path.endswith('/'):
+    if kind == 'group':
         no_group(kp, path)
         kp.add_group(parent_group, child_name)
 
@@ -882,10 +881,10 @@ def remove(args):
     """Remove an Entry/Group"""
 
     kp = open_database(**vars(args))
-    _, path = parse_path(args.path)
+    _, path, kind = parse_path(args.path)
 
     # remove a group
-    if args.path.endswith('/'):
+    if kind == 'group':
         group = get_group(kp, path)
         if len(group.entries) > 0:
             log.error(red("Non-empty group ") + bold(args.path))
@@ -904,10 +903,10 @@ def edit(args):
     """Edit fields of an Entry"""
 
     kp = open_database(**vars(args))
-    _, path = parse_path(args.path)
+    _, path, kind = parse_path(args.path)
 
-    # edit group name
-    if args.path.endswith('/'):
+    # edit group
+    if kind == 'group':
         group = get_group(kp, path)
 
         if args.set:
@@ -922,6 +921,7 @@ def edit(args):
             value = editable_input('Name', group.name)
             group.name = value
 
+    # edit entry
     else:
         entry = get_entry(kp, path)
 
@@ -962,16 +962,17 @@ def move(args):
         log.error(red("Moving elements between databases not supported"))
         sys.exit(1)
 
-    _, dest_path = parse_path(args.dest_path)
-    [group_path, child_name] = decompose_path(dest_path)
+    _, src_path, src_kind = parse_path(args.src_path)
+    _, dest_path, dest_kind = parse_path(args.dest_path)
+    group_path, child_name = decompose_path(dest_path)
     parent_group = get_group(src_kp, group_path)
 
     # if source path is group
-    if args.src_path.endswith('/'):
-        src = get_group(src_kp, args.src_path)
+    if src_kind == 'group':
+        src = get_group(src_kp, src_path)
 
         # if dest path is group
-        if args.dest_path.endswith('/'):
+        if dest_kind == 'group':
             # dest = dest_kp.find_groups(path=args.dest_path, first=True)
             dest = src_kp.find_groups(path=args.dest_path, first=True)
             if dest:
@@ -989,10 +990,10 @@ def move(args):
 
     # if source path is entry
     else:
-        src = get_entry(src_kp, args.src_path)
+        src = get_entry(src_kp, src_path)
 
         # if dest path is group
-        if args.dest_path.endswith('/'):
+        if dest_kind == 'group':
             # dest = get_group(dest_kp, args.dest_path)
             dest = get_group(src_kp, args.dest_path)
             # dest_kp.move_entry(src, dest)
@@ -1002,13 +1003,14 @@ def move(args):
         # if dest path is entry
         else:
             # no_entry(dest_kp, args.dest_path)
-            no_entry(src_kp, args.dest_path)
+            no_entry(src_kp, dest_path)
             log.debug("Renaming entry: {} -> {}".format(src.title, child_name))
             src.title = child_name
             log.debug("Moving entry: {} -> {}".format(src, parent_group))
             # dest_kp.move_entry(src, parent_group)
             src_kp.move_entry(src, parent_group)
 
+    # FIXME: can't move elements between databases.  this is a pykeepass_cache issue
     src_kp.save()
     # dest_kp.save()
 
