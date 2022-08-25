@@ -24,7 +24,7 @@ Features
 
 - fill user/pass field in any application via keyboard shortcut
 - add, delete, move, edit, rename entries and groups
-- generate `correct horse battery staple`_ style, alphanumeric, symbolic passwords
+- generate alphanumeric, symbolic, or `correct horse battery staple`_ style passwords
 - temporarily cache database password (by default for 10 minutes)
 - multiple databases
 - supports KeePass v3 and v4 databases
@@ -44,7 +44,8 @@ Setup
    pip install passhole
    ph init
    
-   # install zenity for graphical password prompt
+   # optionally install zenity for graphical password prompt
+   sudo apt install zenity
 
 
 Example Usage
