@@ -21,7 +21,7 @@ setup(
     },
     install_requires=[
         "pynput",
-        "pykeepass>=4.0.3"
+        "pykeepass>=4.0.3",
         "pykeepass_cache",
         "colorama",
         "future",
