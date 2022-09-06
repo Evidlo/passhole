@@ -146,6 +146,8 @@ def parse_path(path_str):
 
     # parse user entered path string into database name and list
     log.debug(f'path_str: {path_str}')
+    if path_str is None:
+        path_str = '/'
     path = path_str.rstrip('/').split('/')
     element_type = 'group' if path_str.endswith('/') else 'entry'
     log.debug(f'path: {path}')
