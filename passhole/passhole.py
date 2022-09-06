@@ -141,23 +141,29 @@ def parse_path(path_str):
         path_str (str): optionally '@' prefixed path to entry or group
 
     Returns:
-        item (Item): parsed result
+        database (str or None): name of database
+        path (list or None): path to selected element
+        type (str or None): type of element. 'entry', 'group' or 'database'
     """
 
     # parse user entered path string into database name and list
-    log.debug(f'path_str: {path_str}')
     if path_str is None:
-        path_str = '/'
-    path = path_str.rstrip('/').split('/')
-    element_type = 'group' if path_str.endswith('/') else 'entry'
-    log.debug(f'path: {path}')
-    if path_str.startswith('@'):
-        if len(path) >= 2:
-            return path[0].lstrip('@'), path[1:], element_type
-        else:
-            return path[0].lstrip('@'), None, 'database'
+        db, path, type_ = None, None, None
     else:
-        return None, path[0:], element_type
+        stripped_path = path_str.strip('/').split('/')
+        element_type = 'group' if path_str.endswith('/') else 'entry'
+        if path_str.startswith('@'):
+            if len(stripped_path) >= 2:
+                db, path = stripped_path[0].lstrip('@'), stripped_path[1:]
+                type_ = element_type
+            else:
+                db, path, type_ = stripped_path[0].lstrip('@'), None, 'database'
+        else:
+            db, path, type_ = None, stripped_path[0:], element_type
+
+    log.debug(f"parsed path: {path_str} -> {db} {path} {type}")
+    return db, path, type_
+
 # def join_db_prefix(prefix, path):
 #     if prefix is None:
 #         return path
@@ -728,7 +734,7 @@ def list_entries(args):
 
     dbname, path, kind = parse_path(args.path)
     # print all databases
-    if dbname is None:
+    if dbname is None and path is None:
         databases = open_database(all=True, **vars(args))
         for position, (name, kp) in enumerate(databases):
             # print names for config-provided databases
@@ -976,7 +982,7 @@ def move(args):
         # if dest path is group
         if dest_kind == 'group':
             # dest = dest_kp.find_groups(path=args.dest_path, first=True)
-            dest = src_kp.find_groups(path=args.dest_path, first=True)
+            dest = src_kp.find_groups(path=dest_path, first=True)
             if dest:
                 # dest_kp.move_group(src, dest)
                 src_kp.move_group(src, dest)
@@ -997,7 +1003,7 @@ def move(args):
         # if dest path is group
         if dest_kind == 'group':
             # dest = get_group(dest_kp, args.dest_path)
-            dest = get_group(src_kp, args.dest_path)
+            dest = get_group(src_kp, dest_path)
             # dest_kp.move_entry(src, dest)
             src_kp.move_entry(src, dest)
             log.debug("Moving entry: {} -> {}".format(src, dest))
