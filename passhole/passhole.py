@@ -290,6 +290,7 @@ def open_database(
         keyfile=None,
         no_cache=False,
         cache_timeout=600,
+        password=None,
         no_password=False,
         config=default_config,
         database=None,
@@ -310,6 +311,8 @@ def open_database(
     cache_timeout : int, optional
         seconds to keep read/cache database background thread, has no effect if no_cache=True
         (default: 300)
+    password : str, optional
+        specify password without prompting.  Use '-' to read from stdin.
     no_password : bool, optional
         assume database has no password (default: False)
     config : str
@@ -335,7 +338,9 @@ def open_database(
 
     from pykeepass_cache.pykeepass_cache import PyKeePass, cached_databases
 
-    def prompt_open(name, database, keyfile, no_password, no_cache, cache_timeout):
+    def prompt_open(
+        name, database, keyfile, password, no_password, no_cache, cache_timeout
+    ):
         """Open a database and return KeePass object"""
         cache_timeout = int(cache_timeout)
 
@@ -357,7 +362,7 @@ def open_database(
             log.debug("opened databases:" + str(opened_databases))
             # if database is already open on server
             if database in opened_databases:
-                log.debug("opening {} from cache".format(database))
+                log.debug("Opening {} from cache".format(database))
                 return opened_databases[database]
 
         log.debug("{} not found in cache".format(database))
@@ -366,8 +371,15 @@ def open_database(
             log.error(red("No keyfile found at ") + bold(keyfile))
             sys.exit(1)
 
+        # assume database has no password
         if no_password:
             password = None
+        # password is provided directly, or read it from stdin
+        elif password is not None:
+            if password == '-':
+                log.debug("Reading password from stdin")
+                password = input()
+        # no password provided. prompt for it through zenity or console
         else:
             if name is not None:
                 prompt = 'Enter database password ({}):'.format(name)
@@ -423,7 +435,9 @@ def open_database(
 
     # if 'database' argument given, ignore config completely
     if database is not None:
-        kp = prompt_open(database, database, keyfile, no_password, no_cache, cache_timeout)
+        kp = prompt_open(
+            database, database, keyfile, password, no_password, no_cache, cache_timeout
+        )
         if all:
             return [(None, kp)]
         else:
@@ -464,6 +478,7 @@ def open_database(
                     section,
                     c[section].get('database'),
                     c[section].get('keyfile'),
+                    c[section].get('password'),
                     c[section].get('no-password'),
                     c[section].get('no-cache', no_cache),
                     c[section].get('cache-timeout', cache_timeout)
@@ -487,6 +502,7 @@ def open_database(
                 name,
                 c[name]['database'],
                 c[name].get('keyfile'),
+                c[name].get('password'),
                 c[name].get('no-password'),
                 c[name].get('no-cache', no_cache),
                 c[name].get('cache-timeout', cache_timeout)
@@ -502,8 +518,9 @@ def open_database(
                 return prompt_open(
                     section,
                     c[default_section].get('database'),
-                    c[default_section].get('keyfile'),
-                    c[default_section].get('no-password'),
+                    c[default_section].get('keyfile', keyfile),
+                    c[default_section].get('password', password),
+                    c[default_section].get('no-password', no_password),
                     c[default_section].get('no-cache', no_cache),
                     c[default_section].get('cache-timeout', cache_timeout)
                 )
@@ -513,8 +530,9 @@ def open_database(
             return prompt_open(
                 section,
                 c[section].get('database'),
-                c[section].get('keyfile'),
-                c[section].get('no-password'),
+                c[section].get('keyfile', keyfile),
+                c[section].get('password', password),
+                c[section].get('no-password', no_password),
                 c[section].get('no-cache', no_cache),
                 c[section].get('cache-timeout', cache_timeout)
             )
@@ -526,8 +544,9 @@ def open_database(
         return prompt_open(
             section,
             c[default_section].get('database'),
-            c[default_section].get('keyfile'),
-            c[default_section].get('no-password'),
+            c[default_section].get('keyfile', keyfile),
+            c[default_section].get('password', password),
+            c[default_section].get('no-password', no_password),
             c[default_section].get('no-cache', no_cache),
             c[default_section].get('cache-timeout', cache_timeout)
         )
@@ -1158,6 +1177,7 @@ def create_parser():
     parser.add_argument('--debug', action='store_true', default=False, help="enable debug messages")
     parser.add_argument('--database', metavar='PATH', type=str, help="specify database path")
     parser.add_argument('--keyfile', metavar='PATH', type=str, default=None, help="specify keyfile path")
+    parser.add_argument('--password', default=None, help="specify password or read from stdin")
     parser.add_argument('--no-password', action='store_true', default=False, help="database has no password")
     parser.add_argument('--no-cache', action='store_true', default=False, help="don't cache this database in a background process")
     parser.add_argument('--cache-timeout', metavar='SEC', type=int, default=600, help="seconds to hold database open in a background process")

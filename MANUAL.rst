@@ -75,6 +75,9 @@ OPTIONAL ARGS
 \-\-keyfile PATH
   Specify the path to the keyfile when initializing, accessing or modifying the database.  No effect if --database is not given.
 
+\-\-password PASSWORD
+  Supply password directly (possibly insecure), or read it from stdin when supplied '-'
+
 \-\-no-password
   Don't prompt for a password when accessing or modifying the database.  No effect if --database is not given.                                                              
 
