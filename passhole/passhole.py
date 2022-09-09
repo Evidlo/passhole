@@ -161,7 +161,7 @@ def parse_path(path_str):
         else:
             db, path, type_ = None, stripped_path[0:], element_type
 
-    log.debug(f"parsed path: {path_str} -> {db} {path} {type}")
+    log.debug(f"parsed path: {path_str} -> {db} {path} {type_}")
     return db, path, type_
 
 # def join_db_prefix(prefix, path):
@@ -406,12 +406,15 @@ def open_database(
                     sys.exit(1)
                 password = p.communicate()[0].decode('utf-8').rstrip('\n')
 
-        log.debug("opening {} with password:{} and keyfile:{}".format(
+        log.debug("Opening {} with password:{} and keyfile:{}".format(
             database,
             None if password is None else 'redacted',
             str(keyfile)
         ))
 
+        from pykeepass.exceptions import (
+            CredentialsError, PayloadChecksumError, HeaderChecksumError
+        )
         try:
             if no_cache:
                 from pykeepass import PyKeePass as PyKeePass_nocache
@@ -420,16 +423,18 @@ def open_database(
                 return PyKeePass(database, password=password, keyfile=keyfile, timeout=cache_timeout)
         # FIXME: handle exceptions more gracefully
         # does importing from pykeepass.exceptions cause an increase in startup time?
+        except CredentialsError:
+            log.error(red("Invalid credentials"))
+            sys.exit(1)
+        except PayloadChecksumError:
+            log.error(red("Payload checksum error"))
+            sys.exit(1)
+        except HeaderChecksumError:
+            log.error(red("Header checksum error"))
+            sys.exit(1)
         except Exception as e:
-            if type(e).__name__ == 'pykeepass.exceptions.CredentialsError':
-                log.error(red("Invalid credentials"))
-            elif type(e).__name__ == 'pykeepass.exceptions.PayloadChecksumError':
-                log.error(red("Payload checksum error"))
-            elif type(e).__name__ == 'pykeepass.exceptions.HeaderChecksumError':
-                log.error(red("Header checksum error"))
-            else:
-                log.error(red("Error opening database"))
-                log.debug(e)
+            log.error(red("Error opening database"))
+            log.debug(e)
             sys.exit(1)
 
 
@@ -452,14 +457,13 @@ def open_database(
             sys.exit(1)
 
         c = ConfigParser()
-        log.debug("reading config from {}".format(config))
+        log.debug("Reading config from {}".format(config))
         c.read(config)
 
         # find default section
         for section in c.sections():
             if c.has_option(section, 'default') and c[section].getboolean('default'):
                 default_section = section
-                log.debug('default_section {}'.format(default_section))
                 break
         else:
             default_section = None
@@ -493,8 +497,6 @@ def open_database(
 
         # open a specific database in config by name
         elif name is not None:
-            # allow name to start with @
-            name = name.lstrip('@')
             if name not in c.sections():
                 log.error(red("No config section found for " + bold(name)))
                 sys.exit(1)
@@ -640,7 +642,11 @@ def type_entries(args):
     if args.totp:
         otp = None
         if selected_entry.otp is not None:
-            otp = pyotp.parse_uri(selected_entry.otp)
+            try:
+                otp = pyotp.parse_uri(selected_entry.otp)
+            except ValueError:
+                log.error(red("Invalid OTP URI ") + bold(selected_entry.otp))
+                sys.exit(1)
         if otp is not None:
             if args.xdotool:
                 call_xdotool(['type', otp.now()])
