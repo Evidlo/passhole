@@ -717,6 +717,8 @@ def show(args):
             qr.add_data(entry.otp)
             qr.print_ascii()
             print(green("OTP Code: ") + pyotp.parse_uri(entry.otp).now())
+        if entry.notes is not None:
+            print(green("Notes:") + "\n" + (entry.notes or ''))
         # print custom fields
         for field_name, field_value in entry.custom_properties.items():
             print(green("{}: ".format(field_name)) + str(field_value or ''))
