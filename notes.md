@@ -1,3 +1,8 @@
+# todo
+
+- make `ph edit foobar --field newfield` work with nonexisting fields
+- make `ph grep slack` work for folders.  list all subentries/groups
+
 # ----------- command examples --------------
 
 open acm
