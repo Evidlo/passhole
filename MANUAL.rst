@@ -56,6 +56,10 @@ restart [-h]
 init [-h] [--name NAME] [--database DATABASE] [--password PASSWORD] [--keyfile KEYFILE]
     Create a new database.  You will be prompted for the database password and whether or not to use a keyfile.  See --database and --keyfile to initialize in a non-default location.
 
+eval [-h] [--json] CODE
+    Evaluate CODE as Python code.  Variable ``kp`` is in scope
+for accessing the database.  ``ag`` is also available as shorthand for ``operator.attrgetter``.  If --json is provided, CODE will be evaluated and should be an expression which returns a JSON-serializable result.  Otherwise, CODE is executed and the printing is left up to the user (the ``json`` library is in scope for serialization.)
+
 dump [-h]
     Pretty print database XML to console.  Passwords will appear in plaintext.
 
@@ -248,3 +252,31 @@ retrieve contents of specific field for use in scripts
 
    $ ph show social/twitter --field password
    inns.ambien.travelling.throw.force
+
+custom evaluated expressions
+----------------------------
+
+Get title of all entries whose URLs start with 't'
+
+.. code:: bash
+
+   $ ph eval -j 'map(attrgetter("title"), filter(lambda e: (e.url or "").startswith("t"), kp.entries))'
+   ["twitter"]
+
+Same example as above, but with multiline code in a Bash Heredoc
+
+.. code:: bash
+
+   ph eval - <<EOF
+   titles = []
+   for e in kp.entries:
+       if (e.url or "").startswith("t"):
+           titles.append(e.title)
+   print(json.dumps(titles))
+   EOF
+
+Same example again, but using underlying PyKeePass API
+
+.. code:: bash
+
+   ph eval -j 'map(ag("title"), kp.find_entries(url="^t.*", regex=True))'

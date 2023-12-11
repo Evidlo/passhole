@@ -6,12 +6,14 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from builtins import input
+from collections.abc import Iterator
 from .version import __version__
 import subprocess
 from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
+import json
 import readline
 # import gpgme
 import random
@@ -816,6 +818,46 @@ def grep(args):
         for entry in entries:
             print('/'.join(entry.path))
 
+# class ReprEncoder(json.JSONEncoder):
+#     """Simple JSON encoder which falls back to __repr__ if obj is not serializable"""
+
+#     def default(self, obj):
+#         # Let json library try to encode.  If TypeError, use object repr
+#         try:
+#             return json.JSONEncoder.default(self, obj)
+#         except TypeError:
+#             return str(obj)
+
+def evaluate(args):
+    """Execute arbitrary Python for more complex searches
+    """
+
+    kp = open_database(**vars(args))
+
+    # read from stdin
+    if args.python == '-':
+        expr = sys.stdin.read()
+    else:
+        expr = args.python
+
+    from operator import attrgetter as ag, attrgetter
+
+    # serialize expression to json
+    if args.json:
+        # `expr` should be an expression
+        result = eval(expr)
+        # cast iterators to list so they can be serialized
+        if isinstance(result, Iterator):
+            result = list(result)
+        if result is not None:
+            # e = ReprEncoder()
+            # print(e.encode(result))
+            print(json.dumps(result))
+
+    # execute arbitrary code
+    else:
+        exec(expr)
+
 
 def decompose_path(path):
     """Process path into parent group and child item
@@ -1162,6 +1204,12 @@ def create_parser():
     grep_parser.add_argument('--field', metavar='FIELD', type=str, help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
+
+    # process args for `eval` command
+    eval_parser = subparsers.add_parser('eval', help="run arbitrary Python")
+    eval_parser.add_argument('python', metavar='STR', type=str, help="Python string to evaluate")
+    eval_parser.add_argument('-j', '--json', action='store_true', default=False, help="JSON output. STR must be an expression")
+    eval_parser.set_defaults(func=evaluate)
 
     # process args for `dump` command
     dump_parser = subparsers.add_parser('dump', help="pretty print database XML to console")
