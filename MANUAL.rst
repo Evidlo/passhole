@@ -166,12 +166,12 @@ More databases may be added using the init command or manually specified in the 
 
 Python Scripts
 ==============
-The *open_databases* function is available for import for conveniently opening your database with password caching enabled.  It returns an OrderedDict with database names as keys (as given in the config) and PyKeePass objects as values.  The default database is the first element in this dictionary.
+The *open_database* function is available for use in scripts to conveniently open the default database.  When ``all=True``, it returns a list of tuples of the form ('[NAME]', [PyKeePass object]), where NAME is specified in the config.
 
 .. code:: python
 
-   from passhole.passhole import open_databases
-   kp = list(open_databases().values()[0]
+   from passhole.passhole import open_database
+   kp = open_database()
 
 
 Examples
