@@ -97,6 +97,21 @@ def boolean_input(prompt, default=True):
         # ask again
         return boolean_input(prompt, default)
 
+
+def parse_totp(totp_str):
+    try:
+        try:
+            otp = pyotp.parse_uri(totp_str)
+        except ValueError:
+            otp = pyotp.parse_uri(f'otpauth://totp/?secret={totp_str}')
+        # check that otp code works
+        otp.now()
+    except Exception as e:
+        log.error(red("Invalid OTP URI ") + bold(totp_str))
+        sys.exit(1)
+        raise e
+    return otp
+
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
     if type(path) is str:
@@ -644,11 +659,7 @@ def type_entries(args):
     if args.totp:
         otp = None
         if selected_entry.otp is not None:
-            try:
-                otp = pyotp.parse_uri(selected_entry.otp)
-            except ValueError:
-                log.error(red("Invalid OTP URI ") + bold(selected_entry.otp))
-                sys.exit(1)
+            otp = parse_totp(selected_entry.otp)
         if otp is not None:
             if args.xdotool:
                 call_xdotool(['type', otp.now()])
@@ -697,8 +708,7 @@ def show(args):
         if entry.otp is None:
             log.error(red("Entry has no OTP field"))
             sys.exit(1)
-        import pyotp
-        print(pyotp.parse_uri(entry.otp).now(), end='')
+        print(parse_totp(entry.otp).now(), end='')
 
     # otherwise, show all fields
     else:
@@ -712,13 +722,12 @@ def show(args):
         print(green("URL: ") + (entry.url or ''))
         if entry.otp is not None:
             print(green("OTP: ") + (entry.otp or ''))
-            import pyotp
             import qrcode
             # generate QR code for seed
             qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L, border=1)
             qr.add_data(entry.otp)
             qr.print_ascii()
-            print(green("OTP Code: ") + pyotp.parse_uri(entry.otp).now())
+            print(green("OTP Code: ") + parse_totp(entry.otp).now())
         if entry.notes is not None:
             print(green("Notes:") + "\n" + (entry.notes or ''))
         # print custom fields
@@ -936,13 +945,14 @@ def add(args):
             password += args.append
 
         url = editable_input('URL')
+        otp = editable_input('OTP')
 
         # log.debug(
         #     'Adding entry: group:{}, title:{}, user:{}, pass:{}, url:{}'.format(
         #         parent_group, child_name, username, password, url
         #     )
         # )
-        entry = kp.add_entry(parent_group, child_name, username, password, url=url)
+        entry = kp.add_entry(parent_group, child_name, username, password, url=url, otp=otp)
 
         # set custom fields
         if args.fields is not None:

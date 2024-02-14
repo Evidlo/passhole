@@ -2,6 +2,9 @@
 
 - make `ph edit foobar --field newfield` work with nonexisting fields
 - make `ph grep slack` work for folders.  list all subentries/groups
+- make `ph grep field` grep for fields
+- add copy command
+- [x] add `otp` as default field for `add` command
 
 # ----------- command examples --------------
 
