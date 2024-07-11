@@ -570,6 +570,35 @@ def open_database(
             c[default_section].get('cache-timeout', cache_timeout)
         )
 
+def type_string(k, s, stroke_duration=0.012, stroke_delay=0.0):
+    """Type out a string using pynput
+
+    Prints the given string using the keyboard with specific delays
+    between actions.
+
+    Parameters
+    ----------
+    k : Controller
+        Keyboard controller object
+    s : string
+        String to send to keyboard
+    stroke_duration : float , optional
+        Duration of a key press, defaults to 12 ms (like xdotool)
+    stroke_delay : float, optional
+        Delay between two separate key strokes, defaults to 0 ms
+    """
+    from time import sleep
+    for i, character in enumerate(s):
+        try:
+            k.press(character)
+            if stroke_duration > 0.0:
+                sleep(stroke_duration)
+            k.release(character)
+            if stroke_delay > 0.0:
+                sleep(stroke_delay)
+
+        except (ValueError, k.InvalidKeyException):
+            raise k.InvalidCharacterException(i, character)
 
 def type_entries(args):
     """Type out password using keyboard
@@ -675,7 +704,8 @@ def type_entries(args):
                     call_xdotool(['type', selected_entry.username])
                     call_xdotool(['key', 'Tab'])
                 else:
-                    k.type(selected_entry.username)
+                    type_string(k, selected_entry.username, args.duration, args.delay)
+
                     k.press(Key.tab)
                     k.release(Key.tab)
             else:
@@ -685,7 +715,7 @@ def type_entries(args):
             if args.xdotool:
                 call_xdotool(['type', selected_entry.password])
             else:
-                k.type(selected_entry.password)
+                type_string(k, selected_entry.password, args.duration, args.delay)
         else:
             log.warning("Selected entry does not have a password")
 
@@ -1197,6 +1227,8 @@ def create_parser():
     type_parser.add_argument('--totp', action='store_true', default=False, help="type entry TOTP")
     type_parser.add_argument('--xdotool', action='store_true', default=False, help="use xdotool for typing passwords")
     type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
+    type_parser.add_argument('--duration', type=float, default=0.012, help="how long a typed key will be pressed in seconds")
+    type_parser.add_argument('--delay', type=float, default=0.0, help="the delay between two key presses in seconds")
     type_parser.set_defaults(func=type_entries)
 
     # process args for `init` command
