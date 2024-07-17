@@ -704,6 +704,7 @@ def type_entries(args):
                     call_xdotool(['type', selected_entry.username])
                     call_xdotool(['key', 'Tab'])
                 else:
+                    # FIXME - replace with `k.type` when pynput PR is merged https://github.com/moses-palmer/pynput/pull/579
                     type_string(k, selected_entry.username, args.duration, args.delay)
 
                     k.press(Key.tab)
