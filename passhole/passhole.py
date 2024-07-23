@@ -18,7 +18,7 @@ import readline
 # import gpgme
 import random
 import os
-from os.path import realpath, expanduser, dirname, join
+from os.path import realpath, expanduser, dirname, join, exists
 import sys
 import shutil
 import logging
@@ -190,13 +190,16 @@ def parse_path(path_str):
 
 def init_database(args):
     """Create database"""
-    # from pykeepass.pykeepass import PyKeePass
 
     # ----- setup config -----
 
+    config = realpath(expanduser(args.config))
+
     c = ConfigParser()
-    if os.path.exists(args.config):
-        c.read(args.config)
+    if exists(config):
+        log.debug(f"Found config at {args.config}")
+        c.read(config)
+        print(c.sections())
 
     if args.name is None:
         database_name = editable_input("Database name (no spaces)", "passhole")
@@ -212,7 +215,7 @@ def init_database(args):
     else:
         c.add_section(database_name)
 
-    if not os.path.exists(args.config):
+    if not exists(config):
         c.set(database_name, 'default', 'True')
 
     # ----- database prompt -----
@@ -227,7 +230,7 @@ def init_database(args):
 
 
     # quit if database already exists
-    if os.path.exists(database_path):
+    if exists(expanduser(database_path)):
         log.error(red("Found database at ") + bold(database_path))
         sys.exit(1)
     else:
@@ -272,7 +275,7 @@ def init_database(args):
         keyfile = realpath(expanduser(keyfile))
 
         log.debug("Looking for keyfile at {}".format(keyfile))
-        if os.path.exists(keyfile):
+        if exists(expanduser(keyfile)):
             print("Found existing keyfile at {}  Exiting".format(bold(keyfile)))
             sys.exit(1)
 
@@ -295,9 +298,8 @@ def init_database(args):
     kp.keyfile = keyfile
     kp.save()
 
-    config = realpath(expanduser(args.config))
     # create config
-    print("Creating config at {}".format(bold(config)))
+    print("Config written at {}".format(bold(config)))
     os.makedirs(dirname(config), exist_ok=True)
     with open(config, 'w') as f:
         c.write(f)
@@ -367,7 +369,7 @@ def open_database(
             keyfile = realpath(expanduser(keyfile))
 
         # check if database exists
-        if not os.path.exists(database):
+        if not exists(database):
             log.error(
                 red("No database found at ") +
                 bold(database)
@@ -384,7 +386,7 @@ def open_database(
 
         log.debug("{} not found in cache".format(database))
         # if path of given keyfile doesn't exist
-        if keyfile is not None and  not os.path.exists(keyfile):
+        if keyfile is not None and  not exists(keyfile):
             log.error(red("No keyfile found at ") + bold(keyfile))
             sys.exit(1)
 
@@ -469,7 +471,7 @@ def open_database(
         # read config
         config = realpath(expanduser(config))
 
-        if not os.path.exists(config):
+        if not exists(config):
             log.error(red("No config found at ") + bold(config))
             sys.exit(1)
 
