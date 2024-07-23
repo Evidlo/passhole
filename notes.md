@@ -1,5 +1,7 @@
 # todo
 
+- add `ph regen foobar -w` to regenerate password
+- add `ph mkdir` command?
 - make `ph edit foobar --field newfield` work with nonexisting fields
 - make `ph grep slack` work for folders.  list all subentries/groups
 - make `ph grep field` grep for fields
