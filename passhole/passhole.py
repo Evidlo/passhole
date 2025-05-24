@@ -3,8 +3,6 @@
 # Evan Widloski - 2017-03-07
 # Passhole - Keepass CLI + dmenu interface
 
-from __future__ import absolute_import
-from __future__ import print_function
 from builtins import input
 from collections.abc import Iterator
 from .version import __version__
@@ -49,9 +47,9 @@ wordlist_file = join(base_dir, 'wordlist.txt')
 template_database_file = join(base_dir, 'blank.kdbx')
 template_config_file = join(base_dir, 'passhole.ini')
 
-alphabetic = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-numeric = '0123456789'
-symbolic = '!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
+alphabetic = r'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+numeric = r'0123456789'
+symbolic = r'!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
 
 # gpg = gpgme.Context()
 
