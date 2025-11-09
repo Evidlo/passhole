@@ -1,0 +1,22 @@
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+cffi==2.0.0
+colorama==0.4.6
+construct==2.10.70
+evdev==1.9.2
+future==1.0.0
+lockfile==0.12.2
+lxml==6.0.2
+passhole @ file:///home/evan/resources/passhole
+plumbum==1.10.0
+pycparser==2.23
+pycryptodomex==3.23.0
+pykeepass==4.1.1.post1
+pykeepass-cache==2.0.3
+pynput==1.8.1
+pyotp==2.9.0
+python-daemon==3.1.2
+python-xlib==0.33
+qrcode==8.2
+rpyc==6.0.2
+six==1.17.0
