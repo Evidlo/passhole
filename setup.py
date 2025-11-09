@@ -24,7 +24,6 @@ setup(
         "pykeepass>=4.0.3",
         "pykeepass_cache",
         "colorama",
-        "future",
         "pyotp",
         "qrcode",
     ],
