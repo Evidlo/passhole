@@ -20,9 +20,46 @@ man:
 dist:
 	python setup.py sdist
 
-.PHONY: pypi
+.PHONY: release
 pypi: dist man
+	# check that changelog is updated.  only look at first 3 parts of semver
+	version=$(version)
+	stripped=$$(echo $${version} | cut -d . -f -3 | cut -d '-' -f 1)
+	if ! grep $${stripped} CHANGELOG.rst
+	then
+		echo "Changelog doesn't seem to be updated! Quitting..."
+		exit 1
+	fi
+	# generate release notes from changelog
+	awk "BEGIN{p=0}; /^$${stripped}/{next}; /---/{p=1;next}; /^$$/{exit}; p {print}" CHANGELOG.rst > TMPNOTES
+	gh release create --latest --verify-tag v$(version) dist/pykeepass-$(version)* -F TMPNOTES
 	twine upload dist/passhole-$(version).tar.gz
+
+.PHONY: release_nonotes
+pypi: dist man
+	gh release create --latest --verify-tag v$(version) dist/pykeepass-$(version)*
+	twine upload dist/passhole-$(version).tar.gz
+
+.PHONY: lock
+lock:
+	# run tests then make a requirements.txt lockfile
+	rm -rf .venv_lock
+	virtualenv .venv_lock
+	. .venv_lock/bin/activate
+	pip install .
+	python test/tests.py
+	pip freeze > requirements.txt
+
+.PHONY: tag
+tag:
+	# tag git commit
+	git add requirements.txt
+	git add setup.py
+	git add CHANGELOG.rst
+	git commit -m "bump version" --allow-empty
+	git tag -a v$(version) -m "version $(version)"
+	git push --tags
+	git push
 
 # ----- Docker -----
 
