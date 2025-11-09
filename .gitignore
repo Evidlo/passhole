@@ -4,3 +4,4 @@ passhole.egg-info
 passhole.1
 **/*.pyc
 build/
+TMPNOTES

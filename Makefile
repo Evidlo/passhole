@@ -21,7 +21,7 @@ dist:
 	python setup.py sdist
 
 .PHONY: release
-pypi: dist man
+release: dist man
 	# check that changelog is updated.  only look at first 3 parts of semver
 	version=$(version)
 	stripped=$$(echo $${version} | cut -d . -f -3 | cut -d '-' -f 1)
@@ -32,12 +32,12 @@ pypi: dist man
 	fi
 	# generate release notes from changelog
 	awk "BEGIN{p=0}; /^$${stripped}/{next}; /---/{p=1;next}; /^$$/{exit}; p {print}" CHANGELOG.rst > TMPNOTES
-	gh release create --latest --verify-tag v$(version) dist/pykeepass-$(version)* -F TMPNOTES
+	gh release create --latest --verify-tag v$(version) dist/passhole-$(version)* -F TMPNOTES
 	twine upload dist/passhole-$(version).tar.gz
 
 .PHONY: release_nonotes
-pypi: dist man
-	gh release create --latest --verify-tag v$(version) dist/pykeepass-$(version)*
+release_nonotes: dist man
+	gh release create --latest --verify-tag v$(version) dist/psashole-$(version)*
 	twine upload dist/passhole-$(version).tar.gz
 
 .PHONY: lock
