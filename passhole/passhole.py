@@ -412,7 +412,7 @@ def open_database(
                 log.debug('Detected non-interactive shell')
                 try:
                     p = subprocess.Popen(
-                        ["zenity", "--entry", "--hide-text", "--text='{}'".format(prompt)],
+                        ["zenity", "--password", "--title='{}'".format(prompt)],
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
                         stderr=open(os.devnull, 'w'),
