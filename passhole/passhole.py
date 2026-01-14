@@ -956,6 +956,41 @@ def ensure_timezone_aware(dt):
     return dt
 
 
+def set_entry_expiry(entry, expiry_time):
+    """Set expiry time on an entry, handling rpyc cache properly.
+
+    Args:
+        entry: pykeepass Entry object (may be rpyc netref)
+        expiry_time: datetime object or None to disable expiration
+    """
+    if expiry_time is None:
+        entry.expires = False
+        return
+
+    entry.expires = True
+
+    # Check if entry is an rpyc netref (from pykeepass-cache)
+    if 'netref' in type(entry).__module__ or 'netref' in str(type(entry)):
+        # For rpyc, we need to encode the time ourselves and set it via XML
+        # because rpyc can't serialize datetime objects properly for pykeepass
+        import struct
+        import base64
+
+        # Encode datetime as pykeepass expects (seconds since 0001-01-01 as base64)
+        diff = expiry_time - datetime(1, 1, 1, tzinfo=timezone.utc)
+        encoded_time = base64.b64encode(struct.pack('<Q', int(diff.total_seconds()))).decode('utf-8')
+
+        # Set via the XML element directly
+        times_element = entry._element.find('Times')
+        if times_element is not None:
+            expiry_element = times_element.find('ExpiryTime')
+            if expiry_element is not None:
+                expiry_element.text = encoded_time
+    else:
+        # For local PyKeePass objects, direct assignment works
+        entry.expiry_time = expiry_time
+
+
 def expired(args):
     """List expired or expiring entries"""
 
@@ -1156,15 +1191,7 @@ def add(args):
         # set expiration date
         if args.expires:
             expiry_time = parse_expiry_date(args.expires)
-            if expiry_time:
-                entry.expires = True
-                # Create a new timezone object to avoid rpyc serialization issues
-                # rpyc doesn't serialize timezone.utc properly, so we create a fresh
-                # timezone object using timedelta(0) which represents UTC
-                utc_tz = timezone(timedelta(0))
-                entry.expiry_time = expiry_time.replace(tzinfo=utc_tz)
-            else:
-                entry.expires = False
+            set_entry_expiry(entry, expiry_time)
 
         # set custom fields
         if args.fields is not None:
@@ -1244,13 +1271,7 @@ def edit(args):
         # set expiration date
         elif args.expires:
             expiry_time = parse_expiry_date(args.expires)
-            if expiry_time:
-                entry.expires = True
-                # Create a new timezone object to avoid rpyc serialization issues
-                utc_tz = timezone(timedelta(0))
-                entry.expiry_time = expiry_time.replace(tzinfo=utc_tz)
-            else:
-                entry.expires = False
+            set_entry_expiry(entry, expiry_time)
 
         # otherwise, edit all fields interactively
         else:
