@@ -11,6 +11,7 @@ from getpass import getpass
 from colorama import Fore, Back, Style
 from base64 import b64encode
 from io import BytesIO
+from datetime import datetime, timedelta, timezone
 import json
 import readline
 # import gpgme
@@ -49,7 +50,7 @@ template_config_file = join(base_dir, 'passhole.ini')
 
 alphabetic = r'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 numeric = r'0123456789'
-symbolic = r'!@#$%^&*()_+-=[]{};:'"<>,./?\|`~"
+symbolic = '!@#$%^&*()_+-=[]{};:\'"<>,./?\\|`~'
 
 # gpg = gpgme.Context()
 
@@ -59,7 +60,9 @@ reserved_fields = {
     'password':'Password',
     'notes':'Notes',
     'title': 'Title',
-    'totp': 'otp'
+    'totp': 'otp',
+    'expires': 'Expires',
+    'expiry_time': 'ExpiryTime'
 }
 
 
@@ -109,6 +112,61 @@ def parse_totp(totp_str):
         sys.exit(1)
         raise e
     return otp
+
+
+def parse_expiry_date(expiry_str):
+    """Parse expiry date string into datetime object
+
+    Args:
+        expiry_str (str): expiry date string. Can be:
+            - ISO format date (e.g., '2025-12-31')
+            - ISO format datetime (e.g., '2025-12-31T23:59:59')
+            - Relative format (e.g., '+30d', '+1y', '+6m')
+            - 'never' to disable expiration
+
+    Returns:
+        datetime or None: expiry datetime (timezone-aware, in UTC) or None if 'never'
+    """
+    if not expiry_str or expiry_str.lower() == 'never':
+        return None
+
+    # handle relative dates
+    if expiry_str.startswith('+'):
+        try:
+            value = int(expiry_str[1:-1])
+            unit = expiry_str[-1].lower()
+            now = datetime.now(timezone.utc)
+            if unit == 'd':
+                return now + timedelta(days=value)
+            elif unit == 'w':
+                return now + timedelta(weeks=value)
+            elif unit == 'm':
+                return now + timedelta(days=value * 30)  # approximate month
+            elif unit == 'y':
+                return now + timedelta(days=value * 365)  # approximate year
+            else:
+                raise ValueError(f"Unknown time unit: {unit}")
+        except (ValueError, IndexError):
+            log.error(red("Invalid relative expiry format: ") + bold(expiry_str))
+            log.error("Use format like '+30d', '+1w', '+6m', '+1y'")
+            sys.exit(1)
+
+    # handle absolute dates
+    try:
+        # try ISO format with time
+        if 'T' in expiry_str:
+            dt = datetime.fromisoformat(expiry_str)
+        else:
+            # date only - set to end of day
+            dt = datetime.fromisoformat(expiry_str + 'T23:59:59')
+        # ensure timezone-aware (pykeepass 4.x expects timezone-aware datetimes)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        log.error(red("Invalid expiry date format: ") + bold(expiry_str))
+        log.error("Use ISO format (e.g., '2025-12-31') or relative format (e.g., '+30d')")
+        sys.exit(1)
 
 # assertions for entry/group existence/non-existence
 def get_group(kp, path):
@@ -741,6 +799,12 @@ def show(args):
             sys.exit(1)
         print(parse_totp(entry.otp).now(), end='')
 
+    elif args.expiry:
+        if entry.expires and entry.expiry_time:
+            print(entry.expiry_time.isoformat(), end='')
+        else:
+            print("never", end='')
+
     # otherwise, show all fields
     else:
         print(green("Title: ") + (entry.title or ''))
@@ -767,6 +831,17 @@ def show(args):
 
         print(green("Created: ") + entry.ctime.isoformat())
         print(green("Modified: ") + entry.mtime.isoformat())
+        if entry.expires:
+            expiry_time = ensure_timezone_aware(entry.expiry_time)
+            expiry_str = expiry_time.isoformat()
+            now = datetime.now(timezone.utc)
+            if expiry_time <= now:
+                expiry_str = red(expiry_str + " (EXPIRED)")
+            elif expiry_time <= now + timedelta(days=30):
+                expiry_str = Fore.YELLOW + expiry_str + " (expiring soon)" + Fore.RESET
+            print(green("Expires: ") + expiry_str)
+        else:
+            print(green("Expires: ") + "Never")
 
 
 def list_entries(args):
@@ -828,6 +903,7 @@ def list_entries(args):
         else:
             args.field = None
             args.totp = None
+            args.expiry = None
             show(args)
 
 
@@ -857,6 +933,98 @@ def grep(args):
             ))
         for entry in entries:
             print('/'.join(entry.path))
+
+
+def ensure_timezone_aware(dt):
+    """Ensure a datetime object is timezone-aware (UTC).
+
+    Args:
+        dt: datetime object (may be naive or aware, or rpyc netref)
+
+    Returns:
+        datetime: timezone-aware local datetime in UTC
+    """
+    if dt is None:
+        return None
+    # Convert rpyc netref datetime to local datetime (needed for pykeepass-cache)
+    # Check if it's a netref by looking at the type name
+    if 'netref' in type(dt).__module__ or 'netref' in str(type(dt)):
+        dt = datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second,
+                      dt.microsecond, tzinfo=timezone.utc if dt.tzinfo else None)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def expired(args):
+    """List expired or expiring entries"""
+
+    databases = open_database(all=True, **vars(args))
+    now = datetime.now(timezone.utc)
+
+    # calculate the "expiring soon" threshold
+    if args.days:
+        threshold = now + timedelta(days=args.days)
+    else:
+        threshold = now  # only show already expired
+
+    found_any = False
+    for position, (name, kp) in enumerate(databases):
+        expired_entries = []
+        expiring_entries = []
+
+        for entry in kp.entries:
+            if entry.expires and entry.expiry_time:
+                expiry_time = ensure_timezone_aware(entry.expiry_time)
+                if expiry_time <= now:
+                    expired_entries.append(entry)
+                elif expiry_time <= threshold:
+                    expiring_entries.append(entry)
+
+        # skip if nothing to show
+        if not expired_entries and not expiring_entries:
+            continue
+
+        found_any = True
+
+        # print database name if multiple databases
+        if len(databases) > 1:
+            print('{}[{}]{}'.format(
+                '' if position == 0 else '\n',
+                bold(green(name)),
+                ' (default)' if position == 0 else ''
+            ))
+
+        # print expired entries
+        if expired_entries:
+            print(red(bold("Expired:")))
+            for entry in sorted(expired_entries, key=lambda e: ensure_timezone_aware(e.expiry_time)):
+                expiry_time = ensure_timezone_aware(entry.expiry_time)
+                expiry_str = expiry_time.strftime('%Y-%m-%d')
+                print("  {} {}".format(
+                    red(expiry_str),
+                    '/'.join(entry.path)
+                ))
+
+        # print expiring soon entries
+        if expiring_entries:
+            print(Fore.YELLOW + bold("Expiring soon:") + Fore.RESET)
+            for entry in sorted(expiring_entries, key=lambda e: ensure_timezone_aware(e.expiry_time)):
+                expiry_time = ensure_timezone_aware(entry.expiry_time)
+                expiry_str = expiry_time.strftime('%Y-%m-%d')
+                days_left = (expiry_time - now).days
+                print("  {} {} ({} days)".format(
+                    Fore.YELLOW + expiry_str + Fore.RESET,
+                    '/'.join(entry.path),
+                    days_left
+                ))
+
+    if not found_any:
+        if args.days:
+            print("No entries expired or expiring within {} days".format(args.days))
+        else:
+            print("No expired entries")
+
 
 # class ReprEncoder(json.JSONEncoder):
 #     """Simple JSON encoder which falls back to __repr__ if obj is not serializable"""
@@ -985,6 +1153,19 @@ def add(args):
         # )
         entry = kp.add_entry(parent_group, child_name, username, password, url=url, otp=otp)
 
+        # set expiration date
+        if args.expires:
+            expiry_time = parse_expiry_date(args.expires)
+            if expiry_time:
+                entry.expires = True
+                # Create a new timezone object to avoid rpyc serialization issues
+                # rpyc doesn't serialize timezone.utc properly, so we create a fresh
+                # timezone object using timedelta(0) which represents UTC
+                utc_tz = timezone(timedelta(0))
+                entry.expiry_time = expiry_time.replace(tzinfo=utc_tz)
+            else:
+                entry.expires = False
+
         # set custom fields
         if args.fields is not None:
             for field in args.fields.split(','):
@@ -1059,6 +1240,17 @@ def edit(args):
             field = get_field(entry, args.remove)
             results = entry._element.xpath('String/Key[text()="{}"]/..'.format(field))
             entry._element.remove(results[0])
+
+        # set expiration date
+        elif args.expires:
+            expiry_time = parse_expiry_date(args.expires)
+            if expiry_time:
+                entry.expires = True
+                # Create a new timezone object to avoid rpyc serialization issues
+                utc_tz = timezone(timedelta(0))
+                entry.expiry_time = expiry_time.replace(tzinfo=utc_tz)
+            else:
+                entry.expires = False
 
         # otherwise, edit all fields interactively
         else:
@@ -1192,6 +1384,7 @@ def create_parser():
     add_parser.add_argument('-s', '--symbolic', metavar='length', type=int, nargs='?', const=16, default=None, help="generate alphanumeric + symbolic password")
     add_parser.add_argument('--append', metavar='STR', type=str, help="append string to generated password")
     add_parser.add_argument('--fields', metavar='FIELD1,...', type=str, help="comma separated list of custom fields")
+    add_parser.add_argument('--expires', metavar='DATE', type=str, default=None, help="set expiration date (ISO format: '2025-12-31', relative: '+30d', '+1y', or 'never')")
     add_parser.set_defaults(func=add)
 
     # process args for `remove` command
@@ -1210,6 +1403,7 @@ def create_parser():
     show_parser.add_argument('path', metavar='PATH', type=str, help="path to entry")
     show_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="show the contents of a specific field")
     show_parser.add_argument('--totp', action='store_true', default=False, help="get entry TOTP")
+    show_parser.add_argument('--expiry', action='store_true', default=False, help="get entry expiration date")
     show_parser.set_defaults(func=show)
 
     # process args for `edit` command
@@ -1218,6 +1412,7 @@ def create_parser():
     edit_parser.add_argument('--field', metavar='FIELD', type=str, default=None, help="edit the contents of a specific field")
     edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
+    edit_parser.add_argument('--expires', metavar='DATE', type=str, default=None, help="set expiration date (ISO format: '2025-12-31', relative: '+30d', '+1y', or 'never')")
     edit_parser.set_defaults(func=edit)
 
     # process args for `type` command
@@ -1247,6 +1442,11 @@ def create_parser():
     grep_parser.add_argument('--field', metavar='FIELD', type=str, help="search entries for a match in a specific field")
     grep_parser.add_argument('-i', action='store_true', default=False, help="case insensitive searching")
     grep_parser.set_defaults(func=grep)
+
+    # process args for `expired` command
+    expired_parser = subparsers.add_parser('expired', help="list expired or expiring entries")
+    expired_parser.add_argument('-d', '--days', metavar='DAYS', type=int, default=None, help="also show entries expiring within DAYS days")
+    expired_parser.set_defaults(func=expired)
 
     # process args for `eval` command
     eval_parser = subparsers.add_parser('eval', help="run arbitrary Python")
