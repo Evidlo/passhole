@@ -24,6 +24,7 @@ import argparse
 from configparser import ConfigParser
 from collections import OrderedDict
 import pyotp
+from textwrap import dedent
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 # hide INFO messages from pykeepass
@@ -600,20 +601,13 @@ def type_string(k, s, stroke_duration=0.012, stroke_delay=0.0):
         except (ValueError, k.InvalidKeyException):
             raise k.InvalidCharacterException(i, character)
 
-def type_entries(args):
-    """Type out password using keyboard
 
-    Selects an entry using `prog`, then sends the password to the keyboard.
-    If `tabbed` is true, both the username and password are typed, separated
-    by a tab.  If `totp` is true, generate and type totp.
+def select_entry(args):
+    """Select password entry with dmenu-like program
+
+    Prompts user to select a password entry using a provided dmenu-like program.
+    Returns `selected_entry`.
     """
-
-    from Xlib.error import DisplayNameError
-
-    try:
-        from pynput.keyboard import Controller, Key
-    except DisplayNameError:
-        log.error(red("No X11 session found"))
 
     # build up a dictionary mapping strings (shown in dmenu) to entries
     entry_texts = {}
@@ -646,34 +640,135 @@ def type_entries(args):
                 entry_texts[entry_text] = entry
         dmenu_text = '\n'.join(sorted(entry_texts.keys()))
 
+    # ensure `prog` exists
+    if shutil.which(args.prog.split(' ', 1)[0]) is None:
+        log.error(bold(args.prog.split(' ', 1)[0]) + red(" not found."))
+        sys.exit(1)
 
     # get the entry from dmenu
-    try:
-        p = subprocess.Popen(
-            args.prog,
-            stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            shell=True
-        )
-    except FileNotFoundError:
-        log.error(bold(args.prog[0]) + red(" not found."))
-        sys.exit(1)
+    p = subprocess.Popen(
+        args.prog,
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=True
+    )
     stdout = p.communicate(input=dmenu_text.encode('utf-8'))[0].decode('utf-8').rstrip('\n')
     log.debug("text from dmenu: {}".format(stdout))
 
-    # if nothing was selected, return None
-    if not stdout:
-        log.warning("No path returned by {}".format(args.prog))
-        return
+    # if nothing was selected, abort
+    try:
+        selected_entry = entry_texts[stdout]
+    except KeyError:
+        log.error(red("No entry was selected."))
+        sys.exit(1)
 
     # kp = entry_texts[stdout]
     # _, selection_path, _ = parse_path(stdout)
     # selected_entry = get_entry(kp, selection_path)
 
-    selected_entry = entry_texts[stdout]
-
     log.debug("selected_entry:{}".format(selected_entry))
+    return selected_entry
+
+
+def copy_entries(args):
+    """Copy password to clipboard
+
+    Selects an entry using `prog`, then sends the password to the clipboard.
+    If `tabbed` is true, both the username and password are copied, separated
+    by a tab.  If `totp` is true, generate and copy totp. Clears password from
+    clipboard after 45 seconds.
+    """
+
+    selected_entry = select_entry(args)
+
+    def call_clipboard(text):
+        if os.getenv('WAYLAND_DISPLAY') is not None: # wayland
+            copy_cmd = "wl-copy --sensitive"
+            paste_cmd = "wl-paste -n"
+        elif os.getenv('DISPLAY') is not None: # X11
+            copy_cmd = "xclip -i -selection clipboard"
+            paste_cmd = "xclip -r -o -selection clipboard"
+        else:
+            log.error(red("No graphical session found"))
+            sys.exit(1)
+
+        # copy to clipboard
+        p = subprocess.run(
+            copy_cmd,
+            input=text.encode('utf-8'),
+            shell=True
+        )
+        log.debug("text sent to clipboard: {}".format(text))
+
+        # only clear clipboard if it still contains password
+        values = {
+            "password": text,
+            "copy_cmd": copy_cmd,
+            "paste_cmd": paste_cmd
+        }
+        env = os.environ.copy()
+        env.update(values)
+        clear_clipboard_script = dedent("""\
+            #!/usr/bin/env bash
+            exec bash <(cat << EOF
+            sleep 45
+            if [[ "$($paste_cmd)" == "$password" ]]; then
+                echo -n | $copy_cmd
+            fi
+            EOF
+            )""")
+
+        # clear clipboard after 45 seconds
+        subprocess.Popen(
+            ["bash", "-c", clear_clipboard_script],
+            env=env
+        )
+
+    # type out username/password
+    # parse OTP field and type
+    if args.totp:
+        otp = None
+        if selected_entry.otp is not None:
+            otp = parse_totp(selected_entry.otp)
+        if otp is not None:
+            call_clipboard(otp.now())
+        else:
+            log.error(red("Selected entry has no OTP field"))
+            sys.exit(1)
+    else:
+        clipboard_text = ""
+        if args.tabbed:
+            if selected_entry.username:
+                clipboard_text += selected_entry.username + '\t'
+            else:
+                log.warning("Selected entry does not have a username")
+        # type out password only
+        if selected_entry.password:
+            clipboard_text += selected_entry.password
+        else:
+            log.warning("Selected entry does not have a password")
+
+        call_clipboard(clipboard_text)
+
+
+def type_entries(args):
+    """Type out password using keyboard
+
+    Selects an entry using `prog`, then sends the password to the keyboard.
+    If `tabbed` is true, both the username and password are typed, separated
+    by a tab.  If `totp` is true, generate and type totp.
+    """
+
+    from Xlib.error import DisplayNameError
+
+    try:
+        from pynput.keyboard import Controller, Key
+    except DisplayNameError:
+        log.error(red("No X11 session found"))
+	
+	# select entry to be typed using `prog`
+    selected_entry = select_entry(args)
 
     def call_xdotool(args):
         try:
@@ -1224,6 +1319,15 @@ def create_parser():
     edit_parser.add_argument('--set', metavar=('FIELD', 'VALUE'), type=str, nargs=2, default=None, help="add/edit the contents of a specific field, noninteractively")
     edit_parser.add_argument('--remove', metavar='FIELD', type=str, default=None, help="remove a field from the entry")
     edit_parser.set_defaults(func=edit)
+
+    # process args for `copy` command
+    type_parser = subparsers.add_parser('copy', help="select entries using dmenu (or similar) and copy to clipboard")
+    type_parser.add_argument('name', type=str, nargs='?', default=None, help="name of database to type from")
+    type_parser.add_argument('--prog', metavar='PROG', default='dmenu', help="dmenu-like program to call for entry selection")
+    type_parser.add_argument('--tabbed', action='store_true', default=False, help="copy both username and password (tab separated)")
+    type_parser.add_argument('--totp', action='store_true', default=False, help="copy entry TOTP")
+    type_parser.add_argument('--username', action='store_true', default=False, help="show username in parenthesis during selection")
+    type_parser.set_defaults(func=copy_entries)
 
     # process args for `type` command
     type_parser = subparsers.add_parser('type', help="select entries using dmenu (or similar) and send to keyboard")
