@@ -6,7 +6,7 @@ construct==2.10.70
 evdev==1.9.2
 future==1.0.0
 lockfile==0.12.2
-lxml==6.0.2
+lxml==6.1.0
 passhole @ file:///home/evan/resources/passhole
 plumbum==1.10.0
 pycparser==2.23
