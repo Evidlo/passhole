@@ -42,5 +42,16 @@ class HelperTests(unittest.TestCase):
         db, path, type_ = passhole.parse_path('@db/test')
         self.assertEqual((db, path, type_), ('db', ['test'], 'entry'))
 
+class ParsePathEdgeTests(unittest.TestCase):
+
+    def test_parse_bare_at_sign(self):
+        # a bare '@' names no database; it must not produce an
+        # empty-string database name
+        self.assertEqual(passhole.parse_path('@'), (None, None, None))
+        self.assertEqual(passhole.parse_path('@/'), (None, None, None))
+
+    def test_parse_named_database(self):
+        self.assertEqual(passhole.parse_path('@db'), ('db', None, 'database'))
+
 if __name__ == '__main__':
     unittest.main()

@@ -172,7 +172,11 @@ def parse_path(path_str):
                 db, path = stripped_path[0].lstrip('@'), stripped_path[1:]
                 type_ = element_type
             else:
-                db, path, type_ = stripped_path[0].lstrip('@'), None, 'database'
+                db_name = stripped_path[0].lstrip('@')
+                if db_name:
+                    db, path, type_ = db_name, None, 'database'
+                else:
+                    db, path, type_ = None, None, None
         else:
             db, path, type_ = None, stripped_path[0:], element_type
 
